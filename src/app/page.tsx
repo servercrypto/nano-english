@@ -123,7 +123,6 @@ export default function App() {
     }
   };
 
-  // МОДЕРНИЗИРОВАННЫЙ ЛОГИЧЕСКИЙ БЛОК МИКРОФОНА
   const startSpeechRecognition = () => {
     if (typeof window === 'undefined') return;
     if (speakingFeedback === 'correct' || isListening) return;
@@ -142,18 +141,15 @@ export default function App() {
     };
 
     recognition.onresult = (event: any) => {
-      // 1. Извлекаем текст и намертво зачищаем от точек, запятых и знаков вопроса
       let spokenText = event.results[0][0].transcript.toLowerCase().trim();
       spokenText = spokenText.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "");
 
       const currentItem = categories[activeCategory!].items[speakingIndex];
       const targetWord = currentItem.word.toLowerCase().trim();
 
-      // 2. Фонетическая карта допусков для слова Butter (срезает баги движка распознавания)
       const butterFallbacks = ['better', 'button', 'water', 'matter', 'batur', 'butler', 'bat'];
       const isButterFallback = targetWord === 'butter' && butterFallbacks.some(f => spokenText.includes(f));
 
-      // 3. Каскадная валидация совпадения
       if (spokenText === targetWord || spokenText.includes(targetWord) || isButterFallback) {
         setSpeakingFeedback('correct');
         playFeedbackSound('correct');
@@ -202,6 +198,10 @@ export default function App() {
     setActiveCategory(null);
     setGameState('MENU');
   };
+
+  const isPuzzleComplete = activeCategory && categories[activeCategory] 
+    ? matchedIds.length === categories[activeCategory].items.length 
+    : false;
 
   return (
     <div className="w-full min-h-screen bg-[#0f172a] text-white font-sans p-6 flex flex-col items-center justify-center relative overflow-hidden select-none">
@@ -355,7 +355,7 @@ export default function App() {
           </div>
 
           {/* СПАЙДИ-МОДАЛ */}
-          {isMatchedIdsLengthEquals && (
+          {isPuzzleComplete && (
             <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center z-50 p-6 animate-fadeIn">
               <div className="bg-slate-900 border-2 border-red-500/40 rounded-3xl p-10 max-w-sm w-full flex flex-col items-center shadow-2xl relative overflow-hidden">
                 <div className="absolute inset-0 opacity-5 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
@@ -391,10 +391,6 @@ export default function App() {
       {/* КИТ-КОНТУР 4: МОДУЛЬ ПРОВЕРКИ ВИМОВИ */}
       {gameState === 'SPEAKING' && activeCategory !== null && (() => {
         const currentItem = categories[activeCategory].items[speakingIndex];
-        
-        // Переменная-детекция финала пазла для безопасности рендеринга
-        const isMatchedIdsLengthEquals = matchedIds.length === categories[activeCategory].items.length;
-
         return (
           <div className="w-full max-w-2xl flex flex-col items-center animate-fadeIn px-4 z-10">
             
@@ -441,7 +437,6 @@ export default function App() {
               )}
             </div>
 
-            {/* Интерактивная зона удержания микрофона с фиксом ghost-кликов на iOS */}
             <div className="mt-10 flex flex-col items-center gap-3">
               <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Затисни та говори</span>
               
