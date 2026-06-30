@@ -1,20 +1,40 @@
-import './globals.css';
-import React from 'react';
+import type { Metadata } from 'next';
+import { NEXT_PUBLIC_URL } from '../config';
 
-export const metadata = {
+import './global.css';
+import '@coinbase/onchainkit/styles.css';
+import '@rainbow-me/rainbowkit/styles.css';
+import dynamic from 'next/dynamic';
+
+const OnchainProviders = dynamic(
+  () => import('src/components/OnchainProviders'),
+  {
+    ssr: false,
+  },
+);
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1.0,
+};
+
+export const metadata: Metadata = {
   title: 'Nano English - Tan-Tan',
-  description: 'Interactive Learning App',
+  description: 'Built with OnchainKit',
+  openGraph: {
+    title: 'Nano English - Tan-Tan',
+    description: 'Built with OnchainKit',
+    images: [`${NEXT_PUBLIC_URL}/vibes/vibes-19.png`],
+  },
 };
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode;
-}) {
+}: { children: React.ReactNode }) {
   return (
     <html lang="uk" className="w-full h-full bg-[#0f172a]">
-      <body className="w-full h-full bg-[#0f172a] text-white antialiased m-0 p-0 overflow-x-hidden">
-        {children}
+      <body className="w-full min-h-full bg-[#0f172a] text-white antialiased m-0 p-0 flex items-center justify-center">
+        <OnchainProviders>{children}</OnchainProviders>
       </body>
     </html>
   );
