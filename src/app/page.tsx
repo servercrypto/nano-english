@@ -123,16 +123,13 @@ export default function App() {
     }
   };
 
-  // ЛОГИКА МИКРОФОНА (PUSH-TO-TALK)
+  // МОДЕРНИЗИРОВАННЫЙ ЛОГИЧЕСКИЙ БЛОК МИКРОФОНА
   const startSpeechRecognition = () => {
     if (typeof window === 'undefined') return;
-    if (speakingFeedback === 'correct') return;
+    if (speakingFeedback === 'correct' || isListening) return;
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Speech Recognition не поддерживается в этом браузере. Используйте Safari или Chrome.");
-      return;
-    }
+    if (!SpeechRecognition) return;
 
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
@@ -145,11 +142,19 @@ export default function App() {
     };
 
     recognition.onresult = (event: any) => {
-      const spokenText = event.results[0][0].transcript.toLowerCase().trim();
+      // 1. Извлекаем текст и намертво зачищаем от точек, запятых и знаков вопроса
+      let spokenText = event.results[0][0].transcript.toLowerCase().trim();
+      spokenText = spokenText.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "");
+
       const currentItem = categories[activeCategory!].items[speakingIndex];
       const targetWord = currentItem.word.toLowerCase().trim();
 
-      if (spokenText === targetWord || spokenText.includes(targetWord)) {
+      // 2. Фонетическая карта допусков для слова Butter (срезает баги движка распознавания)
+      const butterFallbacks = ['better', 'button', 'water', 'matter', 'batur', 'butler', 'bat'];
+      const isButterFallback = targetWord === 'butter' && butterFallbacks.some(f => spokenText.includes(f));
+
+      // 3. Каскадная валидация совпадения
+      if (spokenText === targetWord || spokenText.includes(targetWord) || isButterFallback) {
         setSpeakingFeedback('correct');
         playFeedbackSound('correct');
 
@@ -177,12 +182,18 @@ export default function App() {
     };
 
     recognitionRef.current = recognition;
-    recognition.start();
+    try {
+      recognition.start();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const stopSpeechRecognition = () => {
     if (recognitionRef.current) {
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
     }
     setIsListening(false);
   };
@@ -191,10 +202,6 @@ export default function App() {
     setActiveCategory(null);
     setGameState('MENU');
   };
-
-  const isPuzzleComplete = activeCategory && categories[activeCategory] 
-    ? matchedIds.length === categories[activeCategory].items.length 
-    : false;
 
   return (
     <div className="w-full min-h-screen bg-[#0f172a] text-white font-sans p-6 flex flex-col items-center justify-center relative overflow-hidden select-none">
@@ -347,8 +354,8 @@ export default function App() {
 
           </div>
 
-          {/* СПАЙДИ-МОДАЛ ПОСЛЕ ПАЗЛА */}
-          {isPuzzleComplete && (
+          {/* СПАЙДИ-МОДАЛ */}
+          {isMatchedIdsLengthEquals && (
             <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center z-50 p-6 animate-fadeIn">
               <div className="bg-slate-900 border-2 border-red-500/40 rounded-3xl p-10 max-w-sm w-full flex flex-col items-center shadow-2xl relative overflow-hidden">
                 <div className="absolute inset-0 opacity-5 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
@@ -381,13 +388,16 @@ export default function App() {
         </div>
       )}
 
-      {/* КИТ-КОНТУР 4: МОДУЛЬ ПРОВЕРКИ ВИМОВИ (SPEAKING) */}
+      {/* КИТ-КОНТУР 4: МОДУЛЬ ПРОВЕРКИ ВИМОВИ */}
       {gameState === 'SPEAKING' && activeCategory !== null && (() => {
         const currentItem = categories[activeCategory].items[speakingIndex];
+        
+        // Переменная-детекция финала пазла для безопасности рендеринга
+        const isMatchedIdsLengthEquals = matchedIds.length === categories[activeCategory].items.length;
+
         return (
           <div className="w-full max-w-2xl flex flex-col items-center animate-fadeIn px-4 z-10">
             
-            {/* Топ-панель управления */}
             <div className="w-full flex justify-between items-center mb-8">
               <h2 className="text-xl font-bold text-slate-400 flex items-center gap-2">
                 <span>🎙️</span> Вимова: {categories[activeCategory].name} ({speakingIndex + 1}/{categories[activeCategory].items.length})
@@ -400,19 +410,16 @@ export default function App() {
               </button>
             </div>
 
-            {/* Карточка активного объекта */}
             <div className={`w-full max-w-md bg-slate-800/40 border-2 rounded-3xl p-8 flex flex-col items-center relative shadow-2xl transition-all ${
               speakingFeedback === 'correct' ? 'border-green-500 bg-green-500/5 shadow-green-500/5' :
               speakingFeedback === 'wrong' ? 'border-red-500 bg-red-500/5 animate-shake' : 'border-slate-700'
             }`}>
               
-              {/* Большой визуальный объект */}
               <span className="text-9xl mb-6 filter drop-shadow-md select-none animate-fadeIn">{currentItem.emoji}</span>
               
               <h3 className="text-4xl font-black tracking-wide text-white mb-2 uppercase">{currentItem.word}</h3>
               <p className="text-base text-slate-400 font-medium tracking-wide mb-6">{currentItem.translation}</p>
 
-              {/* Кнопка с жёлтой стрелкой под картинкой — Прослушивание эталона */}
               <button 
                 onClick={() => speak(currentItem.word, 'en-US')}
                 className="bg-amber-400 hover:bg-amber-300 text-slate-900 font-black px-6 py-3.5 rounded-2xl flex items-center gap-2 text-sm shadow-xl shadow-amber-500/10 transition-all transform active:scale-95 border-b-4 border-amber-600 active:border-b-0"
@@ -420,7 +427,6 @@ export default function App() {
                 <span className="text-base">➔</span> 🔊 СЛУХАТИ
               </button>
 
-              {/* Слой индикации результата */}
               {speakingFeedback === 'correct' && (
                 <div className="absolute inset-0 bg-slate-950/90 rounded-3xl flex flex-col items-center justify-center animate-scaleIn">
                   <span className="text-6xl mb-2">✅</span>
@@ -435,16 +441,16 @@ export default function App() {
               )}
             </div>
 
-            {/* Интерактивная зона удержания микрофона */}
+            {/* Интерактивная зона удержания микрофона с фиксом ghost-кликов на iOS */}
             <div className="mt-10 flex flex-col items-center gap-3">
               <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Затисни та говори</span>
               
               <button
-                onMouseDown={startSpeechRecognition}
-                onMouseUp={stopSpeechRecognition}
-                onMouseLeave={stopSpeechRecognition}
-                onTouchStart={startSpeechRecognition}
-                onTouchEnd={stopSpeechRecognition}
+                onMouseDown={(e) => { e.preventDefault(); startSpeechRecognition(); }}
+                onMouseUp={(e) => { e.preventDefault(); stopSpeechRecognition(); }}
+                onMouseLeave={(e) => { e.preventDefault(); stopSpeechRecognition(); }}
+                onTouchStart={(e) => { e.preventDefault(); startSpeechRecognition(); }}
+                onTouchEnd={(e) => { e.preventDefault(); stopSpeechRecognition(); }}
                 className={`w-28 h-28 rounded-full flex items-center justify-center border-4 select-none transition-all shadow-2xl relative transform active:scale-90 ${
                   isListening 
                     ? 'bg-red-600 border-red-400 shadow-red-600/30 cursor-grabbing' 
