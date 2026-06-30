@@ -21,11 +21,13 @@ export default function App() {
   const [speakingIndex, setSpeakingIndex] = useState<number>(0);
   const [isListening, setIsListening] = useState<boolean>(false);
   const [speakingFeedback, setSpeakingFeedback] = useState<FeedbackType>(null);
-  const [debugText, setDebugText] = useState<string>(''); // Экранный логгер для оператора
+  const [debugText, setDebugText] = useState<string>('');
   
   const recognitionRef = useRef<any>(null);
   const recognitionActiveRef = useRef<boolean>(false);
-  const shouldStopRef = useRef<boolean>(false); // Асинхронный замок для WebKit
+  const shouldStopRef = useRef<boolean>(false);
+  const stopTimeoutRef = useRef<any>(null);
+  const hasResultRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (gameState === 'PUZZLE' && activeCategory && categories[activeCategory]) {
@@ -44,6 +46,7 @@ export default function App() {
       setDebugText('Готовий до запису');
       recognitionActiveRef.current = false;
       shouldStopRef.current = false;
+      hasResultRef.current = false;
     }
   }, [gameState, activeCategory]);
 
@@ -129,59 +132,63 @@ export default function App() {
     }
   };
 
-  // МОДЕРНИЗИРОВАННЫЙ КЛАССЫ ИНСТАНСА RECOGNITION С КАСКАДНЫМ ЗАМКОМ
   const startSpeechRecognition = () => {
     if (typeof window === 'undefined') return;
-    if (speakingFeedback === 'correct' || isListening) return;
+    if (speakingFeedback === 'correct') return;
+
+    if (stopTimeoutRef.current) clearTimeout(stopTimeoutRef.current);
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      setDebugText('API не підтримується цим браузером');
+      setDebugText('API не підтримується');
       return;
     }
+
+    if (recognitionActiveRef.current) return;
 
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
+    recognition.continuous = false;
 
+    hasResultRef.current = false;
     shouldStopRef.current = false;
 
     recognition.onstart = () => {
       setIsListening(true);
       recognitionActiveRef.current = true;
       setSpeakingFeedback(null);
-      setDebugText('Слухаю малюка...');
+      setDebugText('Слухаю малюка... Говоріть!');
       
-      // Защитный триггер: если отпустили кнопку до старта железа
       if (shouldStopRef.current) {
-        stopSpeechRecognition();
+        processStopCall();
       }
     };
 
     recognition.onresult = (event: any) => {
+      hasResultRef.current = true;
       let spokenText = event.results[0][0].transcript.toLowerCase().trim();
       spokenText = spokenText.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "");
       
       const currentItem = categories[activeCategory!].items[speakingIndex];
       const targetWord = currentItem.word.toLowerCase().trim();
 
-      setDebugText(`Розпізнано: "${spokenText}"`);
+      setDebugText(`Почуто: "${spokenText}"`);
 
-      // Карта нечеткого и аппаратного сопоставления (Детские фильтры)
       const speechFallbacks: Record<string, string[]> = {
-        bread: ['red', 'brad', 'dread', 'brend', 'breathe', 'breath', 'braid', 'brand', 'pret', 'bed', 'bad', 'ed', 'bray', 'break'],
-        butter: ['better', 'button', 'water', 'matter', 'batur', 'butler', 'bat', 'bater', 'barter', 'bata', 'baba', 'pater'],
-        eggs: ['ex', 'x', 'ax', 'acts', 'ext', 'next', 'age', 'egg', 'eg', 'adds', 'ecs', 'ekz', 'eks', 'text', 's', 'ace', 'it', 'hey'],
-        milk: ['mil', 'malk', 'melk', 'miolk', 'mio', 'mele', 'm', 'ilk'],
-        juice: ['jus', 'choose', 'shoes', 'jewice', 'juiz', 'us', 'chis', 'jus', 'jos', 'juicey'],
-        cheese: ['chis', 'chees', 'chiz', 'shees', 'chis', 'jesus', 'trees', 'shiz'],
-        wave: ['way', 'waive', 'wife', 'waves', 'white', 'wait', 'save', 'wev', 'why', 'wake', 'with', 'brave', 'grave', 'whale', 'web', 'one', 'when', 'weather', 'wear', 'were', 'was', 'we', 've', 'v', 'main', 'well', 'will'],
-        shark: ['sharks', 'sharp', 'sharc', 'shock', 'shak', 'shack', 'shot', 'shek', 'ark', 'star'],
-        octopus: ['optopus', 'octobus', 'octopos', 'octupus', 'actor', 'pus', 'octo', 'opus', 'pas', 'abus'],
-        island: ['ailand', 'iland', 'ireland', 'highland', 'islands', 'byland', 'alan', 'land', 'and', 'i-land'],
-        swim: ['swimming', 'swem', 'slim', 'swam', 'swine', 'sweet', 'see', 'sim', 'sum'],
-        sunbathe: ['sunbathing', 'sunbed', 'sunbath', 'sun beach', 'sanbaze', 'sunbase', 'some base', 'sun', 'base', 'space']
+        bread: ['red', 'brad', 'dread', 'brend', 'breathe', 'breath', 'braid', 'brand', 'pret', 'bed', 'bad', 'ed', 'bray', 'break', 'head', 'said'],
+        butter: ['better', 'button', 'water', 'matter', 'batur', 'butler', 'bat', 'bater', 'barter', 'bata', 'baba', 'pater', 'data', 'beta'],
+        eggs: ['ex', 'x', 'ax', 'acts', 'ext', 'next', 'age', 'egg', 'eg', 'adds', 'ecs', 'ekz', 'eks', 'text', 's', 'ace', 'it', 'hey', 'legs', 'pegs'],
+        milk: ['mil', 'malk', 'melk', 'miolk', 'mio', 'mele', 'm', 'ilk', 'help', 'look'],
+        juice: ['jus', 'choose', 'shoes', 'jewice', 'juiz', 'us', 'chis', 'jus', 'jos', 'juicey', 'dress', 'drus'],
+        cheese: ['chis', 'chees', 'chiz', 'shees', 'chis', 'jesus', 'trees', 'shiz', 'please'],
+        wave: ['way', 'waive', 'wife', 'waves', 'white', 'wait', 'save', 'wev', 'why', 'wake', 'with', 'brave', 'grave', 'whale', 'web', 'one', 'when', 'weather', 'wear', 'were', 'was', 'we', 've', 'v', 'main', 'well', 'will', 'wove', 'whip', 'wide', 'away', 'waver', 'wade'],
+        shark: ['sharks', 'sharp', 'sharc', 'shock', 'shak', 'shack', 'shot', 'shek', 'ark', 'star', 'chark', 'shah', 'dark', 'heart', 'part', 'sharks', 'shirk', 'shirt', 'shut'],
+        octopus: ['optopus', 'octobus', 'octopos', 'octupus', 'actor', 'pus', 'octo', 'opus', 'pas', 'abus', 'octa', 'upus'],
+        island: ['ailand', 'iland', 'ireland', 'highland', 'islands', 'byland', 'alan', 'land', 'and', 'i-land', 'i-len', 'irelen'],
+        swim: ['swimming', 'swem', 'slim', 'swam', 'swine', 'sweet', 'see', 'sim', 'sum', 'san', 'sam'],
+        sunbathe: ['sunbathing', 'sunbed', 'sunbath', 'sun beach', 'sanbaze', 'sunbase', 'some base', 'sun', 'base', 'space', 'beach']
       };
 
       const fallbacks = speechFallbacks[targetWord] || [];
@@ -195,7 +202,7 @@ export default function App() {
           if (speakingIndex < categories[activeCategory!].items.length - 1) {
             setSpeakingIndex(prev => prev + 1);
             setSpeakingFeedback(null);
-            setDebugText('Готовий до наступного слова');
+            setDebugText('Чудово! Наступне слово');
           } else {
             setSpeakingFeedback('complete');
           }
@@ -208,14 +215,19 @@ export default function App() {
     };
 
     recognition.onerror = (event: any) => {
-      setDebugText(`Помилка API: ${event.error}`);
-      setIsListening(false);
+      if (event.error !== 'no-speech') {
+        setDebugText(`Помилка API: ${event.error}`);
+      }
       recognitionActiveRef.current = false;
+      setIsListening(false);
     };
 
     recognition.onend = () => {
       setIsListening(false);
       recognitionActiveRef.current = false;
+      if (!hasResultRef.current && !shouldStopRef.current) {
+        setDebugText('Слово не розпізнано. Спробуйте ще раз!');
+      }
     };
 
     recognitionRef.current = recognition;
@@ -226,8 +238,7 @@ export default function App() {
     }
   };
 
-  const stopSpeechRecognition = () => {
-    shouldStopRef.current = true;
+  const processStopCall = () => {
     if (recognitionRef.current && recognitionActiveRef.current) {
       try {
         recognitionRef.current.stop();
@@ -235,6 +246,14 @@ export default function App() {
     }
     setIsListening(false);
     recognitionActiveRef.current = false;
+  };
+
+  const stopSpeechRecognition = () => {
+    shouldStopRef.current = true;
+    // Фиксация хвоста аудиопотока в 400мс
+    stopTimeoutRef.current = setTimeout(() => {
+      processStopCall();
+    }, 400);
   };
 
   const handleExitToMenu = () => {
@@ -302,7 +321,7 @@ export default function App() {
             onClick={() => setGameState('PUZZLE')} 
             className="mt-10 w-full max-w-sm bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 px-8 rounded-2xl shadow-xl shadow-indigo-600/20 transition-all transform active:scale-95 text-center text-lg"
           >
-            Грати в Пазл →
+            Graditi Puzzle →
           </button>
         </div>
       )}
@@ -397,7 +416,7 @@ export default function App() {
 
           </div>
 
-          {/* СПАЙДИ-МОДАЛ ПОСЛЕ ПАЗЛА */}
+          {/* СПАЙДИ-МОДАЛ */}
           {isPuzzleComplete && (
             <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center z-50 p-6 animate-fadeIn">
               <div className="bg-slate-900 border-2 border-red-500/40 rounded-3xl p-10 max-w-sm w-full flex flex-col items-center shadow-2xl relative overflow-hidden">
