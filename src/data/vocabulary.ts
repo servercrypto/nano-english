@@ -14,7 +14,7 @@ export const categories: Record<string, { name: string; icon: string; items: Wor
       { id: "f2", word: "Milk", translation: "Молоко", emoji: "🥛" },
       { id: "f3", word: "Cheese", translation: "Сир", emoji: "🧀" },
       { id: "f4", word: "Juice", translation: "Сік", emoji: "🧃" },
-      { id: "f5", word: "Butter", translation: "Вершкове масло", emoji: "🧈" },
+      { id: "f5", word: "Butter", translation: "Масло", emoji: "🧈" },
       { id: "f6", word: "Eggs", translation: "Яйця", emoji: "🥚" }
     ]
   },

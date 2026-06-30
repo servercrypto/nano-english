@@ -12,7 +12,6 @@ export default function App() {
   const [selectedWordId, setSelectedWordId] = useState<string | null>(null);
   const [matchedIds, setMatchedIds] = useState<string[]>([]);
 
-  // Инициализация и перемешивание кубиков при старте пазла
   useEffect(() => {
     if (gameState === 'PUZZLE' && activeCategory && categories[activeCategory]) {
       const itemsCopy = [...categories[activeCategory].items];
@@ -39,45 +38,21 @@ export default function App() {
     }, 1000);
   };
 
-  const handleMenuNavigation = (categoryKey: string) => {
-    setActiveCategory(categoryKey);
-    setGameState('VOCABULARY');
-  };
-
-  const handleBackToVocabulary = () => {
-    setGameState('VOCABULARY');
-  };
-
-  const handleBackToMenu = () => {
-    setActiveCategory(null);
-    setGameState('MENU');
-  };
-
-  // Шаг 1: Выбор слова и его активация/озвучка
   const handleWordSlotTap = (wordItem: WordItem) => {
-    if (matchedIds.includes(wordItem.id)) return; // Если уже угадано, игнорируем
-    
+    if (matchedIds.includes(wordItem.id)) return;
     speak(wordItem.word, 'en-US');
     setSelectedWordId(wordItem.id);
   };
 
-  // Шаг 2: Выбор кубика-эмодзи для сопоставления с активным словом
   const handleEmojiCubeTap = (emojiItem: WordItem) => {
-    if (!selectedWordId) return; // Если слово не выбрано, кубики не реагируют
+    if (!selectedWordId) return;
 
     if (selectedWordId === emojiItem.id) {
-      // Успешное совпадение
       setMatchedIds([...matchedIds, emojiItem.id]);
-      speak("Excellent", 'en-US');
       setSelectedWordId(null);
     } else {
-      // Ошибка сопоставления — мягкий сброс фокуса слова
       setSelectedWordId(null);
     }
-  };
-
-  const handleNextToSpeaking = () => {
-    setGameState('SPEAKING');
   };
 
   const isPuzzleComplete = activeCategory && categories[activeCategory] 
@@ -85,30 +60,27 @@ export default function App() {
     : false;
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-white font-sans p-6 flex flex-col items-center justify-center">
+    <div className="min-h-screen bg-[#0f172a] text-white font-sans p-4 flex flex-col items-center justify-center relative overflow-hidden">
       
+      {/* Декоративная фоновая паутина для атмосферы мультфильма */}
+      {gameState === 'PUZZLE' && (
+        <div className="absolute top-0 right-0 w-32 h-32 opacity-10 pointer-events-none select-none border-r border-t border-slate-400 rounded-bl-full" />
+      )}
+
       {/* Шапка приложения */}
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold tracking-tight text-white flex items-center justify-center gap-2">
+      <div className="text-center mb-6 z-10">
+        <h1 className="text-2xl font-bold tracking-tight text-white flex items-center justify-center gap-2">
           Nano English <span className="text-indigo-400">•</span> Tan-Tan
         </h1>
-        <div className="mt-2 flex gap-2 justify-center text-xs">
-          <span className="bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded border border-amber-500/30">
-            node: host_optimization
-          </span>
-          <span className="bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded border border-indigo-500/30">
-            audio: web_speech_api
-          </span>
-        </div>
       </div>
 
-      {/* КИТ-КОНТУР 1: ГЛАВНОЕ МЕНЮ ВЫБОРА КАТЕГОРИЙ */}
+      {/* КИТ-КОНТУР 1: ГЛАВНОЕ МЕНЮ */}
       {gameState === 'MENU' && (
         <div className="grid grid-cols-2 gap-6 w-full max-w-md px-4">
           {Object.entries(categories).map(([key, cat]) => (
             <button
               key={key}
-              onClick={() => handleMenuNavigation(key)}
+              onClick={() => { setActiveCategory(key); setGameState('VOCABULARY'); }}
               className="flex flex-col items-center justify-center bg-slate-800/80 hover:bg-slate-700/90 border-2 border-slate-700 rounded-2xl p-6 transition-all transform active:scale-95 shadow-xl aspect-square group"
             >
               <span className="text-5xl mb-3 group-hover:animate-bounce">{cat.icon}</span>
@@ -118,19 +90,14 @@ export default function App() {
         </div>
       )}
 
-      {/* КИТ-КОНТУР 2: РЕЖИМ ИЗУЧЕНИЯ СЛОВ (VOCABULARY) */}
+      {/* КИТ-КОНТУР 2: РЕЖИМ ИЗУЧЕНИЯ (VOCABULARY) */}
       {gameState === 'VOCABULARY' && activeCategory !== null && (
-        <div className="w-full max-w-xl flex flex-col items-center">
-          
+        <div className="w-full max-w-xl flex flex-col items-center animate-fadeIn">
           <div className="w-full flex justify-between items-center mb-6 px-4">
-            <h2 className="text-xl font-medium text-slate-400 flex items-center gap-2">
-              <span>{categories[activeCategory].icon}</span>
-              {categories[activeCategory].name}
+            <h2 className="text-lg font-medium text-slate-400 flex items-center gap-2">
+              <span>{categories[activeCategory].icon}</span> {categories[activeCategory].name}
             </h2>
-            <button 
-              onClick={handleBackToMenu}
-              className="bg-slate-800 hover:bg-slate-700 text-sm font-medium px-4 py-2 rounded-xl border border-slate-700 transition-colors active:scale-95"
-            >
+            <button onClick={() => setGameState('MENU')} className="bg-slate-800 text-xs font-medium px-4 py-2 rounded-xl border border-slate-700 active:scale-95">
               ← В Меню
             </button>
           </div>
@@ -140,7 +107,7 @@ export default function App() {
               <div
                 key={item.id}
                 onClick={() => handleCardTap(item)}
-                className="flex flex-col items-center justify-center bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 rounded-2xl p-4 cursor-pointer transition-all active:scale-98 hover:border-indigo-500/50 shadow-md aspect-square"
+                className="flex flex-col items-center justify-center bg-slate-800/50 border border-slate-700/60 rounded-2xl p-4 cursor-pointer transition-all active:scale-98 aspect-square"
               >
                 <span className="text-5xl mb-2">{item.emoji}</span>
                 <span className="text-base font-bold text-white tracking-wide">{item.word}</span>
@@ -155,31 +122,25 @@ export default function App() {
           >
             Грати в Пазл →
           </button>
-
         </div>
       )}
 
-      {/* КИТ-КОНТУР 3: РЕЖИМ ИГРЫ "ПАЗЛ" */}
+      {/* КИТ-КОНТУР 3: НАСТОЯЩИЙ ИНТЕРЛОКИНГ ПАЗЛ */}
       {gameState === 'PUZZLE' && activeCategory !== null && (
-        <div className="w-full max-w-2xl flex flex-col items-center animate-fadeIn">
+        <div className="w-full max-w-2xl flex flex-col items-center animate-fadeIn z-10">
           
           <div className="w-full flex justify-between items-center mb-6 px-4">
-            <h2 className="text-xl font-medium text-slate-400 flex items-center gap-2">
-              <span>🧩</span> Пазл: {categories[activeCategory].name}
-            </h2>
-            <button 
-              onClick={handleBackToVocabulary}
-              className="bg-slate-800 hover:bg-slate-700 text-sm font-medium px-4 py-2 rounded-xl border border-slate-700 transition-colors active:scale-95"
-            >
+            <h2 className="text-lg font-medium text-slate-400">🧩 Пазл: {categories[activeCategory].name}</h2>
+            <button onClick={() => setGameState('VOCABULARY')} className="bg-slate-800 text-xs font-medium px-4 py-2 rounded-xl border border-slate-700 active:scale-95">
               ← Назад
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-8 w-full px-4 mb-6">
+          <div className="grid grid-cols-2 gap-x-12 gap-y-4 w-full px-4 mb-6 relative">
             
-            {/* Левая сторона (Слова-Слоты) */}
+            {/* ЛЕВАЯ СТОРОНА: СЛОТЫ СЛОВ С ВЫПУКЛЫМ ЗАМКОМ */}
             <div className="flex flex-col gap-3">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-1">1. Натисни Слово</span>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-1">1. Натисни Слово</span>
               {categories[activeCategory].items.map((wordItem) => {
                 const isMatched = matchedIds.includes(wordItem.id);
                 const isSelected = selectedWordId === wordItem.id;
@@ -187,45 +148,55 @@ export default function App() {
                   <div 
                     key={wordItem.id}
                     onClick={() => handleWordSlotTap(wordItem)}
-                    className={`flex items-center justify-between p-4 h-20 rounded-xl transition-all border-2 cursor-pointer ${
+                    className={`flex items-center justify-between p-4 h-16 rounded-l-2xl transition-all border-2 relative cursor-pointer ${
                       isMatched 
-                        ? 'border-green-500/50 bg-green-500/5' 
+                        ? 'border-green-500/40 bg-green-500/5' 
                         : isSelected
-                          ? 'border-indigo-500 bg-indigo-500/20 shadow-md animate-pulse'
-                          : 'border-slate-700 bg-slate-800/30 hover:border-slate-600'
+                          ? 'border-indigo-500 bg-indigo-500/10 shadow-md'
+                          : 'border-slate-700 bg-slate-800/20 hover:border-slate-600'
                     }`}
                   >
-                    <span className="text-base font-bold text-white tracking-wide">{wordItem.word}</span>
-                    {isMatched && <span className="text-4xl animate-scaleIn">{wordItem.emoji}</span>}
+                    <span className="text-sm font-bold text-white tracking-wide">{wordItem.word}</span>
+                    
+                    {/* Круглый замок пазла, выступающий вправо */}
+                    <div className={`absolute right-[-10px] top-1/2 transform -translate-y-1/2 w-5 h-5 rounded-full z-20 border-y-2 border-r-2 ${
+                      isMatched ? 'bg-[#0f172a] border-green-500/40' : isSelected ? 'bg-indigo-950 border-indigo-500' : 'bg-[#0f172a] border-slate-700'
+                    }`} />
+
+                    {/* Если угадано — эмодзи встраивается прямо в правый край карточки слова */}
+                    {isMatched && (
+                      <span className="text-3xl absolute right-4 animate-scaleIn z-30">{wordItem.emoji}</span>
+                    )}
                   </div>
                 );
               })}
             </div>
 
-            {/* Правая сторона (Кубики-Эмодзи) — Разряженная, крупная структура */}
+            {/* ПРАВАЯ СТОРОНА: КУБИКИ-ЭМОДЗИ С ВХОДНЫМ ПАЗОМ */}
             <div className="flex flex-col gap-3">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-1">2. Знайди Кубик</span>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-1">2. Знайди Кубик</span>
               <div className="flex flex-col gap-3">
                 {shuffledItems.map((item) => {
                   const isMatched = matchedIds.includes(item.id);
-                  
                   return (
-                    <div key={item.id} className="h-20">
+                    <div key={item.id} className="h-16 relative">
                       {!isMatched ? (
                         <button 
                           onClick={() => handleEmojiCubeTap(item)}
                           disabled={!selectedWordId}
-                          className={`w-full h-full flex items-center justify-center text-4xl rounded-xl bg-slate-800 border transition-all ${
+                          className={`w-full h-full flex items-center justify-center text-3xl rounded-r-2xl border-2 border-l-0 transition-all relative ${
                             selectedWordId 
-                              ? 'border-slate-700 hover:bg-slate-700/80 hover:border-indigo-500/30 active:scale-95 cursor-pointer' 
-                              : 'border-slate-800 opacity-40 cursor-not-allowed'
+                              ? 'border-slate-700 bg-slate-800/60 hover:bg-slate-700 active:scale-95 cursor-pointer' 
+                              : 'border-slate-800/40 bg-slate-800/10 opacity-30 cursor-not-allowed'
                           }`}
                         >
-                          {item.emoji}
+                          {/* Внутренний полукруглый паз для приема замка слева */}
+                          <div className="absolute left-[-11px] top-1/2 transform -translate-y-1/2 w-5 h-5 rounded-full bg-[#0f172a] border-r-2 border-transparent z-10" />
+                          <span className="z-20">{item.emoji}</span>
                         </button>
                       ) : (
-                        // Пустое пространство вместо исчезнувшего кубика для сохранения стабильности сетки
-                        <div className="w-full h-full border border-dashed border-slate-800/20 rounded-xl" />
+                        // Сохраняем высоту сетки при исчезновении кубика
+                        <div className="w-full h-full border border-dashed border-slate-800/5 opacity-0" />
                       )}
                     </div>
                   );
@@ -235,17 +206,36 @@ export default function App() {
 
           </div>
 
-          {/* Экран Успеха */}
+          {/* ПОЛНОЭКРАННЫЙ СПАЙДИ-МОДАЛ УСПЕХА (ПРИ ПОЛНОЙ СБОРКЕ) */}
           {isPuzzleComplete && (
-            <div className="w-full px-4 mt-4 p-6 bg-green-500/10 border border-green-500/30 rounded-2xl flex flex-col items-center text-center animate-fadeIn">
-              <h2 className="text-xl font-bold text-green-400 mb-2">Чудово! Правильна відповідь! 🎉</h2>
-              <p className="text-xs text-slate-400 mb-4">Всі кубики розставлені по місцях.</p>
-              <button 
-                onClick={handleNextToSpeaking} 
-                className="bg-green-600 hover:bg-green-500 text-white font-semibold py-2.5 px-6 rounded-xl transition-all transform active:scale-95 shadow-md"
-              >
-                Далі (До мікрофону) →
-              </button>
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center z-50 p-6 animate-fadeIn">
+              <div className="bg-slate-900 border-2 border-indigo-500/40 rounded-3xl p-8 max-w-sm w-full flex flex-col items-center shadow-2xl relative overflow-hidden">
+                
+                {/* Паутина на заднем фоне модала */}
+                <div className="absolute inset-0 opacity-5 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
+                
+                {/* Анимированный Спайди (Аватар-карточка из видео Спайди-Тапа) */}
+                <div className="w-36 h-36 bg-gradient-to-b from-red-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-red-500/20 mb-6 border-4 border-white animate-bounce relative z-10">
+                  <span className="text-7xl select-none filter drop-shadow-md">🕷️</span>
+                  {/* Глаза маски Спайди на CSS для узнаваемости */}
+                  <div className="absolute bottom-10 left-8 w-6 h-8 bg-white rounded-br-full rotate-12 border-2 border-black" />
+                  <div className="absolute bottom-10 right-8 w-6 h-8 bg-white rounded-bl-full -rotate-12 border-2 border-black" />
+                </div>
+
+                <h2 className="text-2xl font-black text-center text-white uppercase tracking-wide mb-1 relative z-10">
+                  Чудово! 🎮
+                </h2>
+                <p className="text-sm font-medium text-green-400 text-center mb-6 relative z-10">
+                  Правильна відповідь!
+                </p>
+
+                <button 
+                  onClick={() => setGameState('SPEAKING')} 
+                  className="w-full bg-gradient-to-r from-red-600 to-blue-600 hover:from-red-500 hover:to-blue-500 text-white font-extrabold py-3.5 px-6 rounded-2xl shadow-lg shadow-blue-600/30 transition-all transform active:scale-95 text-center uppercase tracking-wider text-sm relative z-10"
+                >
+                  Далі →
+                </button>
+              </div>
             </div>
           )}
 
@@ -260,10 +250,7 @@ export default function App() {
           <div className="p-4 bg-slate-900/50 rounded-xl border border-slate-800 text-sm text-slate-400 mb-6 w-full">
             Тут буде активовано нативний Web Speech API для розпізнавання мови малюка.
           </div>
-          <button 
-            onClick={() => setGameState('MENU')} 
-            className="text-xs text-slate-500 hover:text-slate-400 underline transition-colors"
-          >
+          <button onClick={() => setGameState('MENU')} className="text-xs text-slate-500 underline">
             Повернутися на головну
           </button>
         </div>
