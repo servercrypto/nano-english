@@ -24,9 +24,6 @@ export default function App() {
   const [debugText, setDebugText] = useState<string>('');
   
   const recognitionRef = useRef<any>(null);
-  const recognitionActiveRef = useRef<boolean>(false);
-  const abortedEarlyRef = useRef<boolean>(false); // Замок раннего отпускания кнопки
-  const stopTimeoutRef = useRef<any>(null);
 
   useEffect(() => {
     if (gameState === 'PUZZLE' && activeCategory && categories[activeCategory]) {
@@ -42,9 +39,7 @@ export default function App() {
       setSpeakingIndex(0);
       setSpeakingFeedback(null);
       setIsListening(false);
-      setDebugText('Готовий до запису (Safari/Chrome)');
-      recognitionActiveRef.current = false;
-      abortedEarlyRef.current = false;
+      setDebugText('Готовий до запису (Safari / Chrome)');
     }
   }, [gameState, activeCategory]);
 
@@ -130,19 +125,16 @@ export default function App() {
     }
   };
 
+  // ОЧИЩЕННЫЙ СИНХРОННЫЙ МОДУЛЬ РАСПОЗНАВАНИЯ РЕЧИ (ЭТАЛОН ВЕРСИИ 4)
   const startSpeechRecognition = () => {
     if (typeof window === 'undefined') return;
-    if (speakingFeedback === 'correct') return;
-
-    if (stopTimeoutRef.current) clearTimeout(stopTimeoutRef.current);
+    if (speakingFeedback === 'correct' || isListening) return;
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      setDebugText('Помилка: Браузер блокує Speech API');
+      setDebugText('Помилка: API не підтримується');
       return;
     }
-
-    if (recognitionActiveRef.current) return;
 
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
@@ -150,17 +142,10 @@ export default function App() {
     recognition.maxAlternatives = 1;
     recognition.continuous = false;
 
-    abortedEarlyRef.current = false;
-
     recognition.onstart = () => {
       setIsListening(true);
-      recognitionActiveRef.current = true;
       setSpeakingFeedback(null);
       setDebugText('Слухаю... Говоріть!');
-      
-      if (abortedEarlyRef.current) {
-        processStopCall();
-      }
     };
 
     recognition.onresult = (event: any) => {
@@ -170,10 +155,9 @@ export default function App() {
       const currentItem = categories[activeCategory!].items[speakingIndex];
       const targetWord = currentItem.word.toLowerCase().trim();
 
-      // Моментальный безусловный вынос на экран услышанного слова
       setDebugText(`Почуто: "${spokenText}"`);
 
-      // Глобальная адаптивная матрица сопоставления
+      // Отказоустойчивая речевая матрица подмен
       const speechFallbacks: Record<string, string[]> = {
         bread: ['red', 'brad', 'dread', 'brend', 'breathe', 'breath', 'braid', 'brand', 'pret', 'bed', 'bad', 'ed', 'bray', 'break', 'head', 'said'],
         butter: ['better', 'button', 'water', 'matter', 'batur', 'butler', 'bat', 'bater', 'barter', 'bata', 'baba', 'pater', 'data', 'beta'],
@@ -186,13 +170,12 @@ export default function App() {
       const fallbacks = speechFallbacks[targetWord] || [];
       const isFallbackMatch = fallbacks.some(f => spokenText === f || spokenText.includes(f));
 
-      // Фильтры аппаратных сопоставлений для категории "Море"
+      // Фильтры аппаратных нечетких совпадений для категории "Море"
       let isSeaFuzzyMatch = false;
       if (targetWord === 'wave') {
-        // Если слово начинается на w/v или содержит характерные гласные
-        isSeaFuzzyMatch = spokenText.startsWith('w') || spokenText.startsWith('v') || spokenText.includes('av') || spokenText.includes('ay') || spokenText.includes('ey');
+        isSeaFuzzyMatch = spokenText.startsWith('w') || spokenText.startsWith('v') || spokenText.includes('av') || spokenText.includes('ay') || spokenText.includes('ey') || spokenText === 'way' || spokenText === 'why' || spokenText === 'one' || spokenText === 'with';
       } else if (targetWord === 'shark') {
-        isSeaFuzzyMatch = spokenText.startsWith('sh') || spokenText.startsWith('ch') || spokenText.includes('ark') || spokenText.includes('art');
+        isSeaFuzzyMatch = spokenText.startsWith('sh') || spokenText.startsWith('ch') || spokenText.includes('ark') || spokenText.includes('art') || spokenText === 'sharp';
       } else if (targetWord === 'octopus') {
         isSeaFuzzyMatch = spokenText.startsWith('oc') || spokenText.startsWith('op') || spokenText.includes('pus') || spokenText.includes('bus');
       } else if (targetWord === 'island') {
@@ -225,13 +208,11 @@ export default function App() {
 
     recognition.onerror = (event: any) => {
       setDebugText(`Статус: ${event.error}`);
-      recognitionActiveRef.current = false;
       setIsListening(false);
     };
 
     recognition.onend = () => {
       setIsListening(false);
-      recognitionActiveRef.current = false;
     };
 
     recognitionRef.current = recognition;
@@ -242,22 +223,13 @@ export default function App() {
     }
   };
 
-  const processStopCall = () => {
-    if (recognitionRef.current && recognitionActiveRef.current) {
+  const stopSpeechRecognition = () => {
+    if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
       } catch (e) {}
     }
     setIsListening(false);
-    recognitionActiveRef.current = false;
-  };
-
-  const stopSpeechRecognition = () => {
-    abortedEarlyRef.current = true;
-    // Оставляем хвостовой буфер 350мс для фиксации окончания слова
-    stopTimeoutRef.current = setTimeout(() => {
-      processStopCall();
-    }, 350);
   };
 
   const handleExitToMenu = () => {
@@ -489,7 +461,7 @@ export default function App() {
                 <span className="text-base">➔</span> 🔊 СЛУХАТИ
               </button>
 
-              {/* ОТЛАДЧИК ДЛЯ ОПЕРАТОРА С БЕЗУСЛОВНЫМ ВЫВОДОМ */}
+              {/* ОТЛАДЧИК СИНХРОННОГО ВЫВОДА */}
               <div className="mt-4 text-[11px] font-mono text-slate-400 bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 w-full text-center shadow-inner">
                 Логгер браузера: <span className="text-indigo-400 font-bold">{debugText}</span>
               </div>
@@ -508,17 +480,16 @@ export default function App() {
               )}
             </div>
 
-            {/* Кнопка записи с полным перехватом тач-событий iOS Safari */}
+            {/* Возвращение к чистой синхронной обработке нажатий без preventDefault и задержек */}
             <div className="mt-8 flex flex-col items-center gap-3">
               <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Затисни та говори</span>
               
               <button
-                onMouseDown={(e) => { e.preventDefault(); startSpeechRecognition(); }}
-                onMouseUp={(e) => { e.preventDefault(); stopSpeechRecognition(); }}
-                onMouseLeave={(e) => { e.preventDefault(); stopSpeechRecognition(); }}
-                onTouchStart={(e) => { e.preventDefault(); startSpeechRecognition(); }}
-                onTouchMove={(e) => { e.preventDefault(); }}
-                onTouchEnd={(e) => { e.preventDefault(); stopSpeechRecognition(); }}
+                onMouseDown={startSpeechRecognition}
+                onMouseUp={stopSpeechRecognition}
+                onMouseLeave={stopSpeechRecognition}
+                onTouchStart={startSpeechRecognition}
+                onTouchEnd={stopSpeechRecognition}
                 className={`w-24 h-24 rounded-full flex items-center justify-center border-4 select-none transition-all shadow-2xl relative transform active:scale-90 ${
                   isListening 
                     ? 'bg-red-600 border-red-400 shadow-red-600/30 cursor-grabbing' 
@@ -532,7 +503,7 @@ export default function App() {
               </button>
             </div>
 
-            {/* СПАЙДИ-МОДАЛ ЗАВЕРШЕНИЯ КАТЕГОРИИ */}
+            {/* СПАЙДИ-МОДАЛ ПОЛНОГО ЗАВЕРШЕНИЯ КАТЕГОРИИ */}
             {speakingFeedback === 'complete' && (
               <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex flex-col items-center justify-center z-50 p-6 animate-fadeIn">
                 <div className="bg-slate-900 border-2 border-indigo-500/40 rounded-3xl p-10 max-w-sm w-full flex flex-col items-center shadow-2xl relative overflow-hidden">
