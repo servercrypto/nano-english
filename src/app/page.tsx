@@ -23,6 +23,7 @@ export default function App() {
   const [speakingFeedback, setSpeakingFeedback] = useState<FeedbackType>(null);
   
   const recognitionRef = useRef<any>(null);
+  const recognitionActiveRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (gameState === 'PUZZLE' && activeCategory && categories[activeCategory]) {
@@ -38,6 +39,7 @@ export default function App() {
       setSpeakingIndex(0);
       setSpeakingFeedback(null);
       setIsListening(false);
+      recognitionActiveRef.current = false;
     }
   }, [gameState, activeCategory]);
 
@@ -125,7 +127,7 @@ export default function App() {
 
   const startSpeechRecognition = () => {
     if (typeof window === 'undefined') return;
-    if (speakingFeedback === 'correct' || isListening) return;
+    if (speakingFeedback === 'correct' || recognitionActiveRef.current) return;
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) return;
@@ -137,6 +139,7 @@ export default function App() {
 
     recognition.onstart = () => {
       setIsListening(true);
+      recognitionActiveRef.current = true;
       setSpeakingFeedback(null);
     };
 
@@ -147,14 +150,22 @@ export default function App() {
       const currentItem = categories[activeCategory!].items[speakingIndex];
       const targetWord = currentItem.word.toLowerCase().trim();
 
-      // Глобальная матрица фонетических допусков (Speech Fallback Matrix)
+      // Глобальная отказоустойчивая матрица подмен (Speech Fallback Matrix)
       const speechFallbacks: Record<string, string[]> = {
-        bread: ['red', 'brad', 'dread', 'brend', 'breathe', 'breath', 'braid', 'brand', 'pret'],
+        // Категория: Еда
+        bread: ['red', 'brad', 'dread', 'brend', 'breathe', 'breath', 'braid', 'brand', 'pret', 'bed'],
         butter: ['better', 'button', 'water', 'matter', 'batur', 'butler', 'bat', 'bater', 'barter', 'bata'],
         eggs: ['ex', 'x', 'ax', 'acts', 'ext', 'next', 'age', 'egg', 'eg', 'adds', 'ecs', 'ekz', 'eks', 'text', 's'],
         milk: ['mil', 'malk', 'melk', 'miolk'],
         juice: ['jus', 'choose', 'shoes', 'jewice', 'juiz', 'us'],
-        cheese: ['chis', 'chees', 'chiz', 'shees']
+        cheese: ['chis', 'chees', 'chiz', 'shees'],
+        // Категория: Море (Предотвращение затыков по Wave и остальным)
+        wave: ['way', 'waive', 'wife', 'waves', 'white', 'wait', 'save', 'wev', 'why', 'wake', 'with'],
+        shark: ['sharks', 'sharp', 'sharc', 'shock', 'shak', 'shack', 'shot'],
+        octopus: ['optopus', 'octobus', 'octopos', 'octupus', 'actor', 'pus', 'octo'],
+        island: ['ailand', 'iland', 'ireland', 'highland', 'islands', 'byland', 'alan'],
+        swim: ['swimming', 'swem', 'slim', 'swam', 'swine', 'sweet'],
+        sunbathe: ['sunbathing', 'sunbed', 'sunbath', 'sun beach', 'sanbaze', 'sunbase', 'some base']
       };
 
       const fallbacks = speechFallbacks[targetWord] || [];
@@ -181,10 +192,12 @@ export default function App() {
 
     recognition.onerror = () => {
       setIsListening(false);
+      recognitionActiveRef.current = false;
     };
 
     recognition.onend = () => {
       setIsListening(false);
+      recognitionActiveRef.current = false;
     };
 
     recognitionRef.current = recognition;
@@ -196,12 +209,16 @@ export default function App() {
   };
 
   const stopSpeechRecognition = () => {
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {}
-    }
-    setIsListening(false);
+    // Безопасный таймаут для iOS WebKit (защита от ультракоротких тапов)
+    setTimeout(() => {
+      if (recognitionRef.current && recognitionActiveRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {}
+      }
+      setIsListening(false);
+      recognitionActiveRef.current = false;
+    }, 100);
   };
 
   const handleExitToMenu = () => {
@@ -447,6 +464,7 @@ export default function App() {
               )}
             </div>
 
+            {/* Зона удержания микрофона со сквозным подавлением скролла/буферизации в iOS Safari */}
             <div className="mt-10 flex flex-col items-center gap-3">
               <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Затисни та говори</span>
               
@@ -455,6 +473,7 @@ export default function App() {
                 onMouseUp={(e) => { e.preventDefault(); stopSpeechRecognition(); }}
                 onMouseLeave={(e) => { e.preventDefault(); stopSpeechRecognition(); }}
                 onTouchStart={(e) => { e.preventDefault(); startSpeechRecognition(); }}
+                onTouchMove={(e) => { e.preventDefault(); }}
                 onTouchEnd={(e) => { e.preventDefault(); stopSpeechRecognition(); }}
                 className={`w-28 h-28 rounded-full flex items-center justify-center border-4 select-none transition-all shadow-2xl relative transform active:scale-90 ${
                   isListening 
