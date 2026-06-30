@@ -21,9 +21,11 @@ export default function App() {
   const [speakingIndex, setSpeakingIndex] = useState<number>(0);
   const [isListening, setIsListening] = useState<boolean>(false);
   const [speakingFeedback, setSpeakingFeedback] = useState<FeedbackType>(null);
+  const [debugText, setDebugText] = useState<string>(''); // Экранный логгер для оператора
   
   const recognitionRef = useRef<any>(null);
   const recognitionActiveRef = useRef<boolean>(false);
+  const shouldStopRef = useRef<boolean>(false); // Асинхронный замок для WebKit
 
   useEffect(() => {
     if (gameState === 'PUZZLE' && activeCategory && categories[activeCategory]) {
@@ -39,7 +41,9 @@ export default function App() {
       setSpeakingIndex(0);
       setSpeakingFeedback(null);
       setIsListening(false);
+      setDebugText('Готовий до запису');
       recognitionActiveRef.current = false;
+      shouldStopRef.current = false;
     }
   }, [gameState, activeCategory]);
 
@@ -125,47 +129,59 @@ export default function App() {
     }
   };
 
+  // МОДЕРНИЗИРОВАННЫЙ КЛАССЫ ИНСТАНСА RECOGNITION С КАСКАДНЫМ ЗАМКОМ
   const startSpeechRecognition = () => {
     if (typeof window === 'undefined') return;
-    if (speakingFeedback === 'correct' || recognitionActiveRef.current) return;
+    if (speakingFeedback === 'correct' || isListening) return;
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
+    if (!SpeechRecognition) {
+      setDebugText('API не підтримується цим браузером');
+      return;
+    }
 
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
 
+    shouldStopRef.current = false;
+
     recognition.onstart = () => {
       setIsListening(true);
       recognitionActiveRef.current = true;
       setSpeakingFeedback(null);
+      setDebugText('Слухаю малюка...');
+      
+      // Защитный триггер: если отпустили кнопку до старта железа
+      if (shouldStopRef.current) {
+        stopSpeechRecognition();
+      }
     };
 
     recognition.onresult = (event: any) => {
       let spokenText = event.results[0][0].transcript.toLowerCase().trim();
       spokenText = spokenText.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "");
-
+      
       const currentItem = categories[activeCategory!].items[speakingIndex];
       const targetWord = currentItem.word.toLowerCase().trim();
 
-      // Глобальная отказоустойчивая матрица подмен (Speech Fallback Matrix)
+      setDebugText(`Розпізнано: "${spokenText}"`);
+
+      // Карта нечеткого и аппаратного сопоставления (Детские фильтры)
       const speechFallbacks: Record<string, string[]> = {
-        // Категория: Еда
-        bread: ['red', 'brad', 'dread', 'brend', 'breathe', 'breath', 'braid', 'brand', 'pret', 'bed'],
-        butter: ['better', 'button', 'water', 'matter', 'batur', 'butler', 'bat', 'bater', 'barter', 'bata'],
-        eggs: ['ex', 'x', 'ax', 'acts', 'ext', 'next', 'age', 'egg', 'eg', 'adds', 'ecs', 'ekz', 'eks', 'text', 's'],
-        milk: ['mil', 'malk', 'melk', 'miolk'],
-        juice: ['jus', 'choose', 'shoes', 'jewice', 'juiz', 'us'],
-        cheese: ['chis', 'chees', 'chiz', 'shees'],
-        // Категория: Море (Предотвращение затыков по Wave и остальным)
-        wave: ['way', 'waive', 'wife', 'waves', 'white', 'wait', 'save', 'wev', 'why', 'wake', 'with'],
-        shark: ['sharks', 'sharp', 'sharc', 'shock', 'shak', 'shack', 'shot'],
-        octopus: ['optopus', 'octobus', 'octopos', 'octupus', 'actor', 'pus', 'octo'],
-        island: ['ailand', 'iland', 'ireland', 'highland', 'islands', 'byland', 'alan'],
-        swim: ['swimming', 'swem', 'slim', 'swam', 'swine', 'sweet'],
-        sunbathe: ['sunbathing', 'sunbed', 'sunbath', 'sun beach', 'sanbaze', 'sunbase', 'some base']
+        bread: ['red', 'brad', 'dread', 'brend', 'breathe', 'breath', 'braid', 'brand', 'pret', 'bed', 'bad', 'ed', 'bray', 'break'],
+        butter: ['better', 'button', 'water', 'matter', 'batur', 'butler', 'bat', 'bater', 'barter', 'bata', 'baba', 'pater'],
+        eggs: ['ex', 'x', 'ax', 'acts', 'ext', 'next', 'age', 'egg', 'eg', 'adds', 'ecs', 'ekz', 'eks', 'text', 's', 'ace', 'it', 'hey'],
+        milk: ['mil', 'malk', 'melk', 'miolk', 'mio', 'mele', 'm', 'ilk'],
+        juice: ['jus', 'choose', 'shoes', 'jewice', 'juiz', 'us', 'chis', 'jus', 'jos', 'juicey'],
+        cheese: ['chis', 'chees', 'chiz', 'shees', 'chis', 'jesus', 'trees', 'shiz'],
+        wave: ['way', 'waive', 'wife', 'waves', 'white', 'wait', 'save', 'wev', 'why', 'wake', 'with', 'brave', 'grave', 'whale', 'web', 'one', 'when', 'weather', 'wear', 'were', 'was', 'we', 've', 'v', 'main', 'well', 'will'],
+        shark: ['sharks', 'sharp', 'sharc', 'shock', 'shak', 'shack', 'shot', 'shek', 'ark', 'star'],
+        octopus: ['optopus', 'octobus', 'octopos', 'octupus', 'actor', 'pus', 'octo', 'opus', 'pas', 'abus'],
+        island: ['ailand', 'iland', 'ireland', 'highland', 'islands', 'byland', 'alan', 'land', 'and', 'i-land'],
+        swim: ['swimming', 'swem', 'slim', 'swam', 'swine', 'sweet', 'see', 'sim', 'sum'],
+        sunbathe: ['sunbathing', 'sunbed', 'sunbath', 'sun beach', 'sanbaze', 'sunbase', 'some base', 'sun', 'base', 'space']
       };
 
       const fallbacks = speechFallbacks[targetWord] || [];
@@ -179,6 +195,7 @@ export default function App() {
           if (speakingIndex < categories[activeCategory!].items.length - 1) {
             setSpeakingIndex(prev => prev + 1);
             setSpeakingFeedback(null);
+            setDebugText('Готовий до наступного слова');
           } else {
             setSpeakingFeedback('complete');
           }
@@ -190,7 +207,8 @@ export default function App() {
       }
     };
 
-    recognition.onerror = () => {
+    recognition.onerror = (event: any) => {
+      setDebugText(`Помилка API: ${event.error}`);
       setIsListening(false);
       recognitionActiveRef.current = false;
     };
@@ -209,16 +227,14 @@ export default function App() {
   };
 
   const stopSpeechRecognition = () => {
-    // Безопасный таймаут для iOS WebKit (защита от ультракоротких тапов)
-    setTimeout(() => {
-      if (recognitionRef.current && recognitionActiveRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch (e) {}
-      }
-      setIsListening(false);
-      recognitionActiveRef.current = false;
-    }, 100);
+    shouldStopRef.current = true;
+    if (recognitionRef.current && recognitionActiveRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
+    }
+    setIsListening(false);
+    recognitionActiveRef.current = false;
   };
 
   const handleExitToMenu = () => {
@@ -421,7 +437,7 @@ export default function App() {
         return (
           <div className="w-full max-w-2xl flex flex-col items-center animate-fadeIn px-4 z-10">
             
-            <div className="w-full flex justify-between items-center mb-8">
+            <div className="w-full flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-slate-400 flex items-center gap-2">
                 <span>🎙️</span> Вимова: {categories[activeCategory].name} ({speakingIndex + 1}/{categories[activeCategory].items.length})
               </h2>
@@ -433,15 +449,15 @@ export default function App() {
               </button>
             </div>
 
-            <div className={`w-full max-w-md bg-slate-800/40 border-2 rounded-3xl p-8 flex flex-col items-center relative shadow-2xl transition-all ${
+            <div className={`w-full max-w-md bg-slate-800/40 border-2 rounded-3xl p-6 flex flex-col items-center relative shadow-2xl transition-all ${
               speakingFeedback === 'correct' ? 'border-green-500 bg-green-500/5 shadow-green-500/5' :
               speakingFeedback === 'wrong' ? 'border-red-500 bg-red-500/5 animate-shake' : 'border-slate-700'
             }`}>
               
-              <span className="text-9xl mb-6 filter drop-shadow-md select-none animate-fadeIn">{currentItem.emoji}</span>
+              <span className="text-9xl mb-4 filter drop-shadow-md select-none animate-fadeIn">{currentItem.emoji}</span>
               
               <h3 className="text-4xl font-black tracking-wide text-white mb-2 uppercase">{currentItem.word}</h3>
-              <p className="text-base text-slate-400 font-medium tracking-wide mb-6">{currentItem.translation}</p>
+              <p className="text-base text-slate-400 font-medium tracking-wide mb-4">{currentItem.translation}</p>
 
               <button 
                 onClick={() => speak(currentItem.word, 'en-US')}
@@ -449,6 +465,11 @@ export default function App() {
               >
                 <span className="text-base">➔</span> 🔊 СЛУХАТИ
               </button>
+
+              {/* ЭКРАННЫЙ ОТЛАДЧИК ДЛЯ ОПЕРАТОРА */}
+              <div className="mt-4 text-[10px] font-mono text-slate-500 bg-slate-950/60 p-2 rounded border border-slate-800/40 w-full text-center">
+                Логгер: <span className="text-indigo-400 font-bold">{debugText}</span>
+              </div>
 
               {speakingFeedback === 'correct' && (
                 <div className="absolute inset-0 bg-slate-950/90 rounded-3xl flex flex-col items-center justify-center animate-scaleIn">
@@ -458,14 +479,14 @@ export default function App() {
               )}
               
               {speakingFeedback === 'wrong' && (
-                <div className="absolute bottom-4 bg-red-500/20 border border-red-500/40 px-4 py-2 rounded-xl animate-scaleIn">
+                <div className="absolute bottom-16 bg-red-500/20 border border-red-500/40 px-4 py-2 rounded-xl animate-scaleIn">
                   <span className="text-xs font-bold text-red-400">❌ Спробуй ще раз</span>
                 </div>
               )}
             </div>
 
             {/* Зона удержания микрофона со сквозным подавлением скролла/буферизации в iOS Safari */}
-            <div className="mt-10 flex flex-col items-center gap-3">
+            <div className="mt-8 flex flex-col items-center gap-3">
               <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Затисни та говори</span>
               
               <button
@@ -475,7 +496,7 @@ export default function App() {
                 onTouchStart={(e) => { e.preventDefault(); startSpeechRecognition(); }}
                 onTouchMove={(e) => { e.preventDefault(); }}
                 onTouchEnd={(e) => { e.preventDefault(); stopSpeechRecognition(); }}
-                className={`w-28 h-28 rounded-full flex items-center justify-center border-4 select-none transition-all shadow-2xl relative transform active:scale-90 ${
+                className={`w-24 h-24 rounded-full flex items-center justify-center border-4 select-none transition-all shadow-2xl relative transform active:scale-90 ${
                   isListening 
                     ? 'bg-red-600 border-red-400 shadow-red-600/30 cursor-grabbing' 
                     : 'bg-indigo-600 border-slate-700 hover:bg-indigo-500 cursor-pointer shadow-indigo-600/20'
