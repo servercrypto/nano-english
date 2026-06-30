@@ -1,20 +1,28 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { categories, WordItem } from '../data/vocabulary';
 
 type GameState = 'MENU' | 'VOCABULARY' | 'PUZZLE' | 'SPEAKING';
-type FeedbackType = 'correct' | 'wrong' | null;
+type FeedbackType = 'correct' | 'wrong' | 'complete' | null;
 
 export default function App() {
   const [gameState, setGameState] = useState<GameState>('MENU');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  
+  // Состояния Пазла
   const [shuffledItems, setShuffledItems] = useState<WordItem[]>([]);
   const [selectedWordId, setSelectedWordId] = useState<string | null>(null);
   const [matchedIds, setMatchedIds] = useState<string[]>([]);
-  
   const [feedbackId, setFeedbackId] = useState<string | null>(null);
   const [feedbackType, setFeedbackType] = useState<FeedbackType>(null);
+
+  // Состояния Микрофона (Speaking)
+  const [speakingIndex, setSpeakingIndex] = useState<number>(0);
+  const [isListening, setIsListening] = useState<boolean>(false);
+  const [speakingFeedback, setSpeakingFeedback] = useState<FeedbackType>(null);
+  
+  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     if (gameState === 'PUZZLE' && activeCategory && categories[activeCategory]) {
@@ -25,6 +33,11 @@ export default function App() {
       setSelectedWordId(null);
       setFeedbackId(null);
       setFeedbackType(null);
+    }
+    if (gameState === 'SPEAKING') {
+      setSpeakingIndex(0);
+      setSpeakingFeedback(null);
+      setIsListening(false);
     }
   }, [gameState, activeCategory]);
 
@@ -110,6 +123,75 @@ export default function App() {
     }
   };
 
+  // ЛОГИКА МИКРОФОНА (PUSH-TO-TALK)
+  const startSpeechRecognition = () => {
+    if (typeof window === 'undefined') return;
+    if (speakingFeedback === 'correct') return;
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Speech Recognition не поддерживается в этом браузере. Используйте Safari или Chrome.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      setSpeakingFeedback(null);
+    };
+
+    recognition.onresult = (event: any) => {
+      const spokenText = event.results[0][0].transcript.toLowerCase().trim();
+      const currentItem = categories[activeCategory!].items[speakingIndex];
+      const targetWord = currentItem.word.toLowerCase().trim();
+
+      if (spokenText === targetWord || spokenText.includes(targetWord)) {
+        setSpeakingFeedback('correct');
+        playFeedbackSound('correct');
+
+        setTimeout(() => {
+          if (speakingIndex < categories[activeCategory!].items.length - 1) {
+            setSpeakingIndex(prev => prev + 1);
+            setSpeakingFeedback(null);
+          } else {
+            setSpeakingFeedback('complete');
+          }
+        }, 1200);
+      } else {
+        setSpeakingFeedback('wrong');
+        playFeedbackSound('wrong');
+        setTimeout(() => setSpeakingFeedback(null), 1500);
+      }
+    };
+
+    recognition.onerror = () => {
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+  };
+
+  const stopSpeechRecognition = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+    setIsListening(false);
+  };
+
+  const handleExitToMenu = () => {
+    setActiveCategory(null);
+    setGameState('MENU');
+  };
+
   const isPuzzleComplete = activeCategory && categories[activeCategory] 
     ? matchedIds.length === categories[activeCategory].items.length 
     : false;
@@ -117,6 +199,7 @@ export default function App() {
   return (
     <div className="w-full min-h-screen bg-[#0f172a] text-white font-sans p-6 flex flex-col items-center justify-center relative overflow-hidden select-none">
       
+      {/* Шапка */}
       <div className="text-center mb-8 z-10">
         <h1 className="text-3xl font-bold tracking-tight text-white flex items-center justify-center gap-2">
           Nano English <span className="text-indigo-400">•</span> Tan-Tan
@@ -139,14 +222,14 @@ export default function App() {
         </div>
       )}
 
-      {/* КИТ-КОНТУР 2: ИЗУЧЕНИЕ */}
+      {/* КИТ-КОНТУР 2: ИЗУЧЕНИЕ СЛОВ */}
       {gameState === 'VOCABULARY' && activeCategory !== null && (
         <div className="w-full max-w-4xl flex flex-col items-center animate-fadeIn px-4">
           <div className="w-full flex justify-between items-center mb-8">
             <h2 className="text-2xl font-bold text-slate-400 flex items-center gap-2">
               <span>{categories[activeCategory].icon}</span> {categories[activeCategory].name}
             </h2>
-            <button onClick={() => setGameState('MENU')} className="bg-slate-800 text-sm font-semibold px-6 py-2.5 rounded-xl border border-slate-700 active:scale-95">
+            <button onClick={handleExitToMenu} className="bg-slate-800 text-sm font-semibold px-6 py-2.5 rounded-xl border border-slate-700 active:scale-95">
               ← В Меню
             </button>
           </div>
@@ -264,7 +347,7 @@ export default function App() {
 
           </div>
 
-          {/* ПОЛНОЭКРАННЫЙ СПАЙДИ-МОДАЛ */}
+          {/* СПАЙДИ-МОДАЛ ПОСЛЕ ПАЗЛА */}
           {isPuzzleComplete && (
             <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center z-50 p-6 animate-fadeIn">
               <div className="bg-slate-900 border-2 border-red-500/40 rounded-3xl p-10 max-w-sm w-full flex flex-col items-center shadow-2xl relative overflow-hidden">
@@ -298,19 +381,117 @@ export default function App() {
         </div>
       )}
 
-      {/* КИТ-КОНТУР 4: МИКРОФОН */}
-      {gameState === 'SPEAKING' && (
-        <div className="w-full max-w-xl p-8 bg-slate-800/40 border border-slate-700 rounded-3xl flex flex-col items-center text-center animate-fadeIn">
-          <div className="text-5xl mb-3">🎙️</div>
-          <h2 className="text-2xl font-black text-indigo-400 mb-4">Модуль перевірки вимови</h2>
-          <div className="p-6 bg-slate-900/50 rounded-2xl border border-slate-800 text-base text-slate-400 mb-8 w-full">
-            Тут буде активовано нативний Web Speech API для розпізнавания мови малюка.
+      {/* КИТ-КОНТУР 4: МОДУЛЬ ПРОВЕРКИ ВИМОВИ (SPEAKING) */}
+      {gameState === 'SPEAKING' && activeCategory !== null && (() => {
+        const currentItem = categories[activeCategory].items[speakingIndex];
+        return (
+          <div className="w-full max-w-2xl flex flex-col items-center animate-fadeIn px-4 z-10">
+            
+            {/* Топ-панель управления */}
+            <div className="w-full flex justify-between items-center mb-8">
+              <h2 className="text-xl font-bold text-slate-400 flex items-center gap-2">
+                <span>🎙️</span> Вимова: {categories[activeCategory].name} ({speakingIndex + 1}/{categories[activeCategory].items.length})
+              </h2>
+              <button 
+                onClick={handleExitToMenu} 
+                className="bg-slate-800 hover:bg-slate-700 text-sm font-semibold px-5 py-2 rounded-xl border border-slate-700 active:scale-95 transition-all text-red-400 hover:border-red-500/30"
+              >
+                ← В Меню
+              </button>
+            </div>
+
+            {/* Карточка активного объекта */}
+            <div className={`w-full max-w-md bg-slate-800/40 border-2 rounded-3xl p-8 flex flex-col items-center relative shadow-2xl transition-all ${
+              speakingFeedback === 'correct' ? 'border-green-500 bg-green-500/5 shadow-green-500/5' :
+              speakingFeedback === 'wrong' ? 'border-red-500 bg-red-500/5 animate-shake' : 'border-slate-700'
+            }`}>
+              
+              {/* Большой визуальный объект */}
+              <span className="text-9xl mb-6 filter drop-shadow-md select-none animate-fadeIn">{currentItem.emoji}</span>
+              
+              <h3 className="text-4xl font-black tracking-wide text-white mb-2 uppercase">{currentItem.word}</h3>
+              <p className="text-base text-slate-400 font-medium tracking-wide mb-6">{currentItem.translation}</p>
+
+              {/* Кнопка с жёлтой стрелкой под картинкой — Прослушивание эталона */}
+              <button 
+                onClick={() => speak(currentItem.word, 'en-US')}
+                className="bg-amber-400 hover:bg-amber-300 text-slate-900 font-black px-6 py-3.5 rounded-2xl flex items-center gap-2 text-sm shadow-xl shadow-amber-500/10 transition-all transform active:scale-95 border-b-4 border-amber-600 active:border-b-0"
+              >
+                <span className="text-base">➔</span> 🔊 СЛУХАТИ
+              </button>
+
+              {/* Слой индикации результата */}
+              {speakingFeedback === 'correct' && (
+                <div className="absolute inset-0 bg-slate-950/90 rounded-3xl flex flex-col items-center justify-center animate-scaleIn">
+                  <span className="text-6xl mb-2">✅</span>
+                  <span className="text-xl font-black text-green-400 uppercase tracking-wider">Супер! Вірно!</span>
+                </div>
+              )}
+              
+              {speakingFeedback === 'wrong' && (
+                <div className="absolute bottom-4 bg-red-500/20 border border-red-500/40 px-4 py-2 rounded-xl animate-scaleIn">
+                  <span className="text-xs font-bold text-red-400">❌ Спробуй ще раз</span>
+                </div>
+              )}
+            </div>
+
+            {/* Интерактивная зона удержания микрофона */}
+            <div className="mt-10 flex flex-col items-center gap-3">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Затисни та говори</span>
+              
+              <button
+                onMouseDown={startSpeechRecognition}
+                onMouseUp={stopSpeechRecognition}
+                onMouseLeave={stopSpeechRecognition}
+                onTouchStart={startSpeechRecognition}
+                onTouchEnd={stopSpeechRecognition}
+                className={`w-28 h-28 rounded-full flex items-center justify-center border-4 select-none transition-all shadow-2xl relative transform active:scale-90 ${
+                  isListening 
+                    ? 'bg-red-600 border-red-400 shadow-red-600/30 cursor-grabbing' 
+                    : 'bg-indigo-600 border-slate-700 hover:bg-indigo-500 cursor-pointer shadow-indigo-600/20'
+                }`}
+              >
+                {isListening && (
+                  <span className="absolute inset-0 rounded-full border-4 border-red-400 animate-ping opacity-75 pointer-events-none" />
+                )}
+                <span className="text-4xl select-none">{isListening ? '🛑' : '🎙️'}</span>
+              </button>
+            </div>
+
+            {/* СПАЙДИ-МОДАЛ ПОЛНОГО ЗАВЕРШЕНИЯ КАТЕГОРИИ */}
+            {speakingFeedback === 'complete' && (
+              <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex flex-col items-center justify-center z-50 p-6 animate-fadeIn">
+                <div className="bg-slate-900 border-2 border-indigo-500/40 rounded-3xl p-10 max-w-sm w-full flex flex-col items-center shadow-2xl relative overflow-hidden">
+                  <div className="absolute inset-0 opacity-5 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
+                  
+                  <div className="w-48 h-48 flex items-center justify-center mb-6 relative z-10">
+                    <img 
+                      src="/spidey.png" 
+                      alt="Spidey Victory Hero" 
+                      className="w-full h-full object-contain animate-bounce select-none pointer-events-none drop-shadow-[0_20px_25px_rgba(239,68,68,0.5)]"
+                    />
+                  </div>
+
+                  <h2 className="text-3xl font-black text-center text-white uppercase tracking-wide mb-1 relative z-10">
+                    ТИ СУПЕРГЕРОЙ! 🏆
+                  </h2>
+                  <p className="text-sm font-semibold text-indigo-400 text-center mb-8 relative z-10">
+                    Усі слова вивчено на відмінно!
+                  </p>
+
+                  <button 
+                    onClick={handleExitToMenu} 
+                    className="w-full bg-gradient-to-r from-red-600 to-blue-600 hover:from-red-500 hover:to-blue-500 text-white font-extrabold py-4 px-6 rounded-2xl shadow-xl shadow-blue-600/40 transition-all transform active:scale-95 text-center uppercase tracking-wider text-base relative z-10"
+                  >
+                    В Головне Меню
+                  </button>
+                </div>
+              </div>
+            )}
+
           </div>
-          <button onClick={() => setGameState('MENU')} className="text-sm text-slate-500 font-bold underline hover:text-slate-400">
-            Повернутися на головну
-          </button>
-        </div>
-      )}
+        );
+      })()}
 
     </div>
   );
