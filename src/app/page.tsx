@@ -147,10 +147,20 @@ export default function App() {
       const currentItem = categories[activeCategory!].items[speakingIndex];
       const targetWord = currentItem.word.toLowerCase().trim();
 
-      const butterFallbacks = ['better', 'button', 'water', 'matter', 'batur', 'butler', 'bat'];
-      const isButterFallback = targetWord === 'butter' && butterFallbacks.some(f => spokenText.includes(f));
+      // Глобальная матрица фонетических допусков (Speech Fallback Matrix)
+      const speechFallbacks: Record<string, string[]> = {
+        bread: ['red', 'brad', 'dread', 'brend', 'breathe', 'breath', 'braid', 'brand', 'pret'],
+        butter: ['better', 'button', 'water', 'matter', 'batur', 'butler', 'bat', 'bater', 'barter', 'bata'],
+        eggs: ['ex', 'x', 'ax', 'acts', 'ext', 'next', 'age', 'egg', 'eg', 'adds', 'ecs', 'ekz', 'eks', 'text', 's'],
+        milk: ['mil', 'malk', 'melk', 'miolk'],
+        juice: ['jus', 'choose', 'shoes', 'jewice', 'juiz', 'us'],
+        cheese: ['chis', 'chees', 'chiz', 'shees']
+      };
 
-      if (spokenText === targetWord || spokenText.includes(targetWord) || isButterFallback) {
+      const fallbacks = speechFallbacks[targetWord] || [];
+      const isFallbackMatch = fallbacks.some(f => spokenText === f || spokenText.includes(f));
+
+      if (spokenText === targetWord || spokenText.includes(targetWord) || isFallbackMatch) {
         setSpeakingFeedback('correct');
         playFeedbackSound('correct');
 
@@ -354,7 +364,7 @@ export default function App() {
 
           </div>
 
-          {/* СПАЙДИ-МОДАЛ */}
+          {/* СПАЙДИ-МОДАЛ ПОСЛЕ ПАЗЛА */}
           {isPuzzleComplete && (
             <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center z-50 p-6 animate-fadeIn">
               <div className="bg-slate-900 border-2 border-red-500/40 rounded-3xl p-10 max-w-sm w-full flex flex-col items-center shadow-2xl relative overflow-hidden">
