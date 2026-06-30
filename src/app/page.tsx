@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { categories, WordItem } from '../data/vocabulary';
 
 type GameState = 'MENU' | 'VOCABULARY' | 'PUZZLE' | 'SPEAKING';
@@ -8,6 +8,19 @@ type GameState = 'MENU' | 'VOCABULARY' | 'PUZZLE' | 'SPEAKING';
 export default function App() {
   const [gameState, setGameState] = useState<GameState>('MENU');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [shuffledItems, setShuffledItems] = useState<WordItem[]>([]);
+  const [selectedEmojiId, setSelectedEmojiId] = useState<string | null>(null);
+  const [matchedIds, setMatchedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (gameState === 'PUZZLE' && activeCategory && categories[activeCategory]) {
+      const itemsCopy = [...categories[activeCategory].items];
+      itemsCopy.sort(() => Math.random() - 0.5);
+      setShuffledItems(itemsCopy);
+      setMatchedIds([]);
+      setSelectedEmojiId(null);
+    }
+  }, [gameState, activeCategory]);
 
   const speak = (text: string, lang: string) => {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
@@ -19,7 +32,6 @@ export default function App() {
   };
 
   const handleCardTap = (item: WordItem) => {
-    // Каскадная озвучка: Сначала Английский, затем Украинский перевод
     speak(item.word, 'en-US');
     setTimeout(() => {
       speak(item.translation, 'uk-UA');
@@ -31,17 +43,43 @@ export default function App() {
     setGameState('VOCABULARY');
   };
 
-  const handleBack = () => {
+  const handleBackToVocabulary = () => {
+    setGameState('VOCABULARY');
+  };
+
+  const handleBackToMenu = () => {
     setActiveCategory(null);
     setGameState('MENU');
   };
+
+  const handlePuzzleClick = (itemId: string) => {
+    setSelectedEmojiId(itemId);
+  };
+
+  const handleWordSlotTap = (wordItem: WordItem) => {
+    if (selectedEmojiId && selectedEmojiId === wordItem.id) {
+      setMatchedIds([...matchedIds, wordItem.id]);
+      speak(wordItem.word, 'en-US');
+      setSelectedEmojiId(null);
+    } else {
+      setSelectedEmojiId(null);
+    }
+  };
+
+  const handleNextToSpeaking = () => {
+    setGameState('SPEAKING');
+  };
+
+  const isPuzzleComplete = activeCategory && categories[activeCategory] 
+    ? matchedIds.length === categories[activeCategory].items.length 
+    : false;
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-white font-sans p-6 flex flex-col items-center justify-center">
       
       {/* Шапка приложения */}
       <div className="text-center mb-8">
-        <h1 className="text-3-xl font-bold tracking-tight text-white flex items-center justify-center gap-2">
+        <h1 className="text-3xl font-bold tracking-tight text-white flex items-center justify-center gap-2">
           Nano English <span className="text-indigo-400">•</span> Tan-Tan
         </h1>
         <div className="mt-2 flex gap-2 justify-center text-xs">
@@ -72,23 +110,21 @@ export default function App() {
 
       {/* КИТ-КОНТУР 2: РЕЖИМ ИЗУЧЕНИЯ СЛОВ (VOCABULARY) */}
       {gameState === 'VOCABULARY' && activeCategory !== null && (
-        <div className="w-full max-w-xl flex flex-col items-center animate-fadeIn">
+        <div className="w-full max-w-xl flex flex-col items-center">
           
-          {/* Панель управления контурным шагом */}
           <div className="w-full flex justify-between items-center mb-6 px-4">
             <h2 className="text-xl font-medium text-slate-400 flex items-center gap-2">
               <span>{categories[activeCategory].icon}</span>
               {categories[activeCategory].name}
             </h2>
             <button 
-              onClick={handleBack}
+              onClick={handleBackToMenu}
               className="bg-slate-800 hover:bg-slate-700 text-sm font-medium px-4 py-2 rounded-xl border border-slate-700 transition-colors active:scale-95"
             >
-              ← Назад
+              ← В Меню
             </button>
           </div>
 
-          {/* Сетка карточек объектов */}
           <div className="grid grid-cols-2 gap-4 w-full px-4">
             {categories[activeCategory].items.map((item) => (
               <div
@@ -103,12 +139,120 @@ export default function App() {
             ))}
           </div>
 
+          <button 
+            onClick={() => setGameState('PUZZLE')} 
+            className="mt-8 w-full max-w-xs bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 px-6 rounded-xl shadow-lg transition-all transform active:scale-95 text-center"
+          >
+            Грати в Пазл →
+          </button>
+
         </div>
       )}
 
-      {/* Заглушки для будущих интерактивных модулей (Пазл / Микрофон) */}
-      {/* {gameState === 'PUZZLE' && <div>ПАЗЛ В РАЗРАБОТКЕ</div>} */}
-      {/* {gameState === 'SPEAKING' && <div>МИКРОФОН В РАЗРАБОТКЕ</div>} */}
+      {/* КИТ-КОНТУР 3: РЕЖИМ ИГРЫ "ПАЗЛ" */}
+      {gameState === 'PUZZLE' && activeCategory !== null && (
+        <div className="w-full max-w-2xl flex flex-col items-center">
+          
+          <div className="w-full flex justify-between items-center mb-6 px-4">
+            <h2 className="text-xl font-medium text-slate-400 flex items-center gap-2">
+              <span>🧩</span> Пазл: {categories[activeCategory].name}
+            </h2>
+            <button 
+              onClick={handleBackToVocabulary}
+              className="bg-slate-800 hover:bg-slate-700 text-sm font-medium px-4 py-2 rounded-xl border border-slate-700 transition-colors active:scale-95"
+            >
+              ← Назад
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-8 w-full px-4 mb-6">
+            
+            {/* Левая сторона (Слова-Слоты) */}
+            <div className="flex flex-col gap-3">
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-1">Слова</span>
+              {categories[activeCategory].items.map((wordItem) => {
+                const isMatched = matchedIds.includes(wordItem.id);
+                return (
+                  <div 
+                    key={wordItem.id}
+                    onClick={() => handleWordSlotTap(wordItem)}
+                    className={`flex items-center justify-between p-4 h-20 rounded-xl bg-slate-800/40 transition-all border-2 cursor-pointer ${
+                      isMatched 
+                        ? 'border-green-500/50 bg-green-500/5' 
+                        : 'border-slate-700 border-dashed hover:border-slate-600'
+                    }`}
+                  >
+                    <span className="text-base font-bold text-white tracking-wide">{wordItem.word}</span>
+                    {isMatched && <span className="text-4xl animate-scaleIn">{wordItem.emoji}</span>}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Правая сторона (Эмодзи-Кнопки) */}
+            <div className="flex flex-col gap-3">
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-1">Кубики</span>
+              <div className="grid grid-cols-2 gap-3">
+                {shuffledItems.map((item) => {
+                  const isMatched = matchedIds.includes(item.id);
+                  const isSelected = selectedEmojiId === item.id;
+                  
+                  if (isMatched) {
+                    return <div key={item.id} className="h-20 opacity-0 transition-all" />;
+                  }
+
+                  return (
+                    <button 
+                      key={item.id}
+                      onClick={() => handlePuzzleClick(item.id)}
+                      className={`h-20 flex items-center justify-center text-4xl rounded-xl bg-slate-800 border transition-all active:scale-95 ${
+                        isSelected 
+                          ? 'border-indigo-500 bg-indigo-500/20 shadow-lg shadow-indigo-500/10 scale-95' 
+                          : 'border-slate-700 hover:bg-slate-700/50'
+                      }`}
+                    >
+                      {item.emoji}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+          </div>
+
+          {/* Экран Успеха внутри контура */}
+          {isPuzzleComplete && (
+            <div className="w-full px-4 mt-4 p-6 bg-green-500/10 border border-green-500/30 rounded-2xl flex flex-col items-center animate-fadeIn text-center">
+              <h2 className="text-xl font-bold text-green-400 mb-2">Чудово! Правильна відповідь! 🎉</h2>
+              <p className="text-xs text-slate-400 mb-4">Усі елементи зіставлено вірно.</p>
+              <button 
+                onClick={handleNextToSpeaking} 
+                className="bg-green-600 hover:bg-green-500 text-white font-semibold py-2.5 px-6 rounded-xl transition-all active:scale-95 shadow-md"
+              >
+                Далі (До мікрофону) →
+              </button>
+            </div>
+          )}
+
+        </div>
+      )}
+
+      {/* КИТ-КОНТУР 4: РЕЖИМ МИКРОФОНА */}
+      {gameState === 'SPEAKING' && (
+        <div className="w-full max-w-md p-6 bg-slate-800/40 border border-slate-700 rounded-2xl flex flex-col items-center text-center">
+          <div className="text-4xl mb-2">🎙️</div>
+          <h2 className="text-lg font-bold text-indigo-400 mb-4">Модуль перевірки вимови</h2>
+          <div className="p-4 bg-slate-900/50 rounded-xl border border-slate-800 text-sm text-slate-400 mb-6">
+            Тут буде активовано нативний Web Speech API для розпізнавання мови малюка.
+          </div>
+          <button 
+            onClick={() => setGameState('MENU')} 
+            className="text-xs text-slate-500 hover:text-slate-400 underline"
+          >
+            Повернутися на головну
+          </button>
+        </div>
+      )}
 
     </div>
   );
