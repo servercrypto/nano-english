@@ -40,7 +40,7 @@ export default function App() {
       setSpeakingIndex(0);
       setSpeakingFeedback(null);
       setIsListening(false);
-      setDebugText('Натисніть та утримуйте мікрофон');
+      setDebugText('Натисніть мікрофон, щоб сказати слово');
       recognitionActiveRef.current = false;
     }
   }, [gameState, activeCategory]);
@@ -127,13 +127,25 @@ export default function App() {
     }
   };
 
-  const startSpeechRecognition = () => {
+  // ЧИСТОЕ ПЕРЕКЛЮЧЕНИЕ РЕЖИМА ЗАПИСИ ОДНИМ ТАПОМ (TAP-TO-TALK)
+  const toggleSpeechRecognition = () => {
     if (typeof window === 'undefined') return;
-    if (speakingFeedback === 'correct' || recognitionActiveRef.current) return;
+    if (speakingFeedback === 'correct') return;
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      setDebugText('Помилка: Браузер не підтримує запис');
+      setDebugText('Помилка: Браузер блокує Speech API');
+      return;
+    }
+
+    // Если микрофон уже активен — ручная отмена сессии по повторному тапу
+    if (isListening || recognitionActiveRef.current) {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch (e) {}
+      }
+      setIsListening(false);
+      recognitionActiveRef.current = false;
+      setDebugText('Запис зупинено');
       return;
     }
 
@@ -147,7 +159,7 @@ export default function App() {
       setIsListening(true);
       recognitionActiveRef.current = true;
       setSpeakingFeedback(null);
-      setDebugText('Слухаю... Говоріть!');
+      setDebugText('Слухаю малюка... Говоріть!');
     };
 
     recognition.onresult = (event: any) => {
@@ -161,9 +173,9 @@ export default function App() {
 
       // Фоновые слова-заменители для детской речи и шумных микрофонов
       const speechFallbacks: Record<string, string[]> = {
-        bread: ['red', 'brad', 'dread', 'brend', 'breathe', 'breath', 'braid', 'brand', 'pret', 'bed', 'bad', 'ed', 'bray', 'break', 'head', 'said'],
-        butter: ['better', 'button', 'water', 'matter', 'batur', 'butler', 'bat', 'bater', 'barter', 'bata', 'baba', 'pater', 'data', 'beta'],
-        eggs: ['ex', 'x', 'ax', 'acts', 'ext', 'next', 'age', 'egg', 'eg', 'adds', 'ecs', 'ekz', 'eks', 'text', 's', 'ace', 'it', 'hey', 'legs', 'pegs', 'ag', 'egs', 'exs', 'is', 'as', 'ies']
+        bread: ['red', 'brad', 'dread', 'brend', 'breathe', 'breath', 'braid', 'brand', 'pret', 'bed', 'bad', 'ed', 'bray', 'break', 'head', 'said', 'bred', 'bret'],
+        butter: ['better', 'button', 'water', 'matter', 'batur', 'butler', 'bat', 'bater', 'barter', 'bata', 'baba', 'pater', 'data', 'beta', 'buta', 'bato'],
+        eggs: ['ex', 'x', 'ax', 'acts', 'ext', 'next', 'age', 'egg', 'eg', 'adds', 'ecs', 'ekz', 'eks', 'text', 's', 'ace', 'it', 'hey', 'legs', 'pegs', 'ag', 'egs', 'exs', 'is', 'as', 'ies', 'ek', 'eh', 'eggx', 'eggs']
       };
 
       const fallbacks = speechFallbacks[targetWord] || [];
@@ -172,7 +184,7 @@ export default function App() {
       // Расширенные мягкие маски для категории "Море"
       let isSeaFuzzyMatch = false;
       if (targetWord === 'wave') {
-        isSeaFuzzyMatch = spokenText.startsWith('w') || spokenText.startsWith('v') || spokenText.includes('av') || spokenText.includes('ay') || spokenText.includes('ey') || spokenText.includes('way') || spokenText.includes('why') || spokenText.includes('one') || spokenText.includes('with') || spokenText.includes('we');
+        isSeaFuzzyMatch = spokenText.startsWith('w') || spokenText.startsWith('v') || spokenText.includes('av') || spokenText.includes('ay') || spokenText.includes('ey') || spokenText.includes('way') || spokenText.includes('why') || spokenText.includes('one') || spokenText.includes('with') || spokenText.includes('we') || spokenText === 'v' || spokenText === 'w' || spokenText.includes('wa');
       } else if (targetWord === 'shark') {
         isSeaFuzzyMatch = spokenText.startsWith('sh') || spokenText.startsWith('ch') || spokenText.includes('ark') || spokenText.includes('art') || spokenText.includes('sharp') || spokenText.includes('shak');
       } else if (targetWord === 'octopus') {
@@ -193,7 +205,7 @@ export default function App() {
           if (speakingIndex < categories[activeCategory!].items.length - 1) {
             setSpeakingIndex(prev => prev + 1);
             setSpeakingFeedback(null);
-            setDebugText('Чудово! Наступне слово');
+            setDebugText('Натисніть мікрофон для наступного слова');
           } else {
             setSpeakingFeedback('complete');
           }
@@ -206,7 +218,7 @@ export default function App() {
     };
 
     recognition.onerror = (event: any) => {
-      setDebugText(`Статус: ${event.error}`);
+      setDebugText(`Статус помилки: ${event.error}`);
       recognitionActiveRef.current = false;
       setIsListening(false);
     };
@@ -222,16 +234,6 @@ export default function App() {
     } catch (e) {
       console.error(e);
     }
-  };
-
-  const stopSpeechRecognition = () => {
-    if (recognitionRef.current && recognitionActiveRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {}
-    }
-    recognitionActiveRef.current = false;
-    setIsListening(false);
   };
 
   const handleExitToMenu = () => {
@@ -464,7 +466,7 @@ export default function App() {
               </button>
 
               {/* ОТЛАДЧИК СИНХРОННОГО ВЫВОДА */}
-              <div className="mt-4 Judd w-full text-center">
+              <div className="mt-4 w-full text-center">
                 <div className="text-[11px] font-mono text-slate-400 bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 shadow-inner">
                   Логгер браузера: <span className="text-indigo-400 font-bold">{debugText}</span>
                 </div>
@@ -484,19 +486,19 @@ export default function App() {
               )}
             </div>
 
-            {/* ПЕРЕХОД НА ЕДИНЫЕ POINTER EVENTS ДЛЯ СТАБИЛИЗАЦИИ SAFARI */}
+            {/* СТАБИЛЬНЫЙ ОДИНОЧНЫЙ ТАП (TAP-TO-TALK) С ПОЛНОЙ АВТОНОМИЕЙ ЖИЗНЕННОГО ЦИКЛА SAFARI */}
             <div className="mt-8 flex flex-col items-center gap-3">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Затисни та говори</span>
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                {isListening ? 'Натисніть ще раз для скасування' : 'Натисніть мікрофон та говоріть'}
+              </span>
               
               <button
-                onPointerDown={(e) => { e.preventDefault(); startSpeechRecognition(); }}
-                onPointerUp={(e) => { e.preventDefault(); stopSpeechRecognition(); }}
-                onPointerLeave={(e) => { e.preventDefault(); stopSpeechRecognition(); }}
+                onClick={toggleSpeechRecognition}
                 style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
-                className={`w-24 h-24 rounded-full flex items-center justify-center border-4 select-none transition-all shadow-2xl relative transform active:scale-90 ${
+                className={`w-24 h-24 rounded-full flex items-center justify-center border-4 select-none transition-all shadow-2xl relative transform active:scale-90 cursor-pointer ${
                   isListening 
-                    ? 'bg-red-600 border-red-400 shadow-red-600/30 cursor-grabbing' 
-                    : 'bg-indigo-600 border-slate-700 hover:bg-indigo-500 cursor-pointer shadow-indigo-600/20'
+                    ? 'bg-red-600 border-red-400 shadow-red-600/30' 
+                    : 'bg-indigo-600 border-slate-700 hover:bg-indigo-500 shadow-indigo-600/20'
                 }`}
               >
                 {isListening && (
