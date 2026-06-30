@@ -9,16 +9,17 @@ export default function App() {
   const [gameState, setGameState] = useState<GameState>('MENU');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [shuffledItems, setShuffledItems] = useState<WordItem[]>([]);
-  const [selectedEmojiId, setSelectedEmojiId] = useState<string | null>(null);
+  const [selectedWordId, setSelectedWordId] = useState<string | null>(null);
   const [matchedIds, setMatchedIds] = useState<string[]>([]);
 
+  // Инициализация и перемешивание кубиков при старте пазла
   useEffect(() => {
     if (gameState === 'PUZZLE' && activeCategory && categories[activeCategory]) {
       const itemsCopy = [...categories[activeCategory].items];
       itemsCopy.sort(() => Math.random() - 0.5);
       setShuffledItems(itemsCopy);
       setMatchedIds([]);
-      setSelectedEmojiId(null);
+      setSelectedWordId(null);
     }
   }, [gameState, activeCategory]);
 
@@ -52,17 +53,26 @@ export default function App() {
     setGameState('MENU');
   };
 
-  const handlePuzzleClick = (itemId: string) => {
-    setSelectedEmojiId(itemId);
+  // Шаг 1: Выбор слова и его активация/озвучка
+  const handleWordSlotTap = (wordItem: WordItem) => {
+    if (matchedIds.includes(wordItem.id)) return; // Если уже угадано, игнорируем
+    
+    speak(wordItem.word, 'en-US');
+    setSelectedWordId(wordItem.id);
   };
 
-  const handleWordSlotTap = (wordItem: WordItem) => {
-    if (selectedEmojiId && selectedEmojiId === wordItem.id) {
-      setMatchedIds([...matchedIds, wordItem.id]);
-      speak(wordItem.word, 'en-US');
-      setSelectedEmojiId(null);
+  // Шаг 2: Выбор кубика-эмодзи для сопоставления с активным словом
+  const handleEmojiCubeTap = (emojiItem: WordItem) => {
+    if (!selectedWordId) return; // Если слово не выбрано, кубики не реагируют
+
+    if (selectedWordId === emojiItem.id) {
+      // Успешное совпадение
+      setMatchedIds([...matchedIds, emojiItem.id]);
+      speak("Excellent", 'en-US');
+      setSelectedWordId(null);
     } else {
-      setSelectedEmojiId(null);
+      // Ошибка сопоставления — мягкий сброс фокуса слова
+      setSelectedWordId(null);
     }
   };
 
@@ -151,7 +161,7 @@ export default function App() {
 
       {/* КИТ-КОНТУР 3: РЕЖИМ ИГРЫ "ПАЗЛ" */}
       {gameState === 'PUZZLE' && activeCategory !== null && (
-        <div className="w-full max-w-2xl flex flex-col items-center">
+        <div className="w-full max-w-2xl flex flex-col items-center animate-fadeIn">
           
           <div className="w-full flex justify-between items-center mb-6 px-4">
             <h2 className="text-xl font-medium text-slate-400 flex items-center gap-2">
@@ -169,17 +179,20 @@ export default function App() {
             
             {/* Левая сторона (Слова-Слоты) */}
             <div className="flex flex-col gap-3">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-1">Слова</span>
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-1">1. Натисни Слово</span>
               {categories[activeCategory].items.map((wordItem) => {
                 const isMatched = matchedIds.includes(wordItem.id);
+                const isSelected = selectedWordId === wordItem.id;
                 return (
                   <div 
                     key={wordItem.id}
                     onClick={() => handleWordSlotTap(wordItem)}
-                    className={`flex items-center justify-between p-4 h-20 rounded-xl bg-slate-800/40 transition-all border-2 cursor-pointer ${
+                    className={`flex items-center justify-between p-4 h-20 rounded-xl transition-all border-2 cursor-pointer ${
                       isMatched 
                         ? 'border-green-500/50 bg-green-500/5' 
-                        : 'border-slate-700 border-dashed hover:border-slate-600'
+                        : isSelected
+                          ? 'border-indigo-500 bg-indigo-500/20 shadow-md animate-pulse'
+                          : 'border-slate-700 bg-slate-800/30 hover:border-slate-600'
                     }`}
                   >
                     <span className="text-base font-bold text-white tracking-wide">{wordItem.word}</span>
@@ -189,30 +202,32 @@ export default function App() {
               })}
             </div>
 
-            {/* Правая сторона (Эмодзи-Кнопки) */}
+            {/* Правая сторона (Кубики-Эмодзи) — Разряженная, крупная структура */}
             <div className="flex flex-col gap-3">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-1">Кубики</span>
-              <div className="grid grid-cols-2 gap-3">
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-1">2. Знайди Кубик</span>
+              <div className="flex flex-col gap-3">
                 {shuffledItems.map((item) => {
                   const isMatched = matchedIds.includes(item.id);
-                  const isSelected = selectedEmojiId === item.id;
                   
-                  if (isMatched) {
-                    return <div key={item.id} className="h-20 opacity-0 transition-all" />;
-                  }
-
                   return (
-                    <button 
-                      key={item.id}
-                      onClick={() => handlePuzzleClick(item.id)}
-                      className={`h-20 flex items-center justify-center text-4xl rounded-xl bg-slate-800 border transition-all active:scale-95 ${
-                        isSelected 
-                          ? 'border-indigo-500 bg-indigo-500/20 shadow-lg shadow-indigo-500/10 scale-95' 
-                          : 'border-slate-700 hover:bg-slate-700/50'
-                      }`}
-                    >
-                      {item.emoji}
-                    </button>
+                    <div key={item.id} className="h-20">
+                      {!isMatched ? (
+                        <button 
+                          onClick={() => handleEmojiCubeTap(item)}
+                          disabled={!selectedWordId}
+                          className={`w-full h-full flex items-center justify-center text-4xl rounded-xl bg-slate-800 border transition-all ${
+                            selectedWordId 
+                              ? 'border-slate-700 hover:bg-slate-700/80 hover:border-indigo-500/30 active:scale-95 cursor-pointer' 
+                              : 'border-slate-800 opacity-40 cursor-not-allowed'
+                          }`}
+                        >
+                          {item.emoji}
+                        </button>
+                      ) : (
+                        // Пустое пространство вместо исчезнувшего кубика для сохранения стабильности сетки
+                        <div className="w-full h-full border border-dashed border-slate-800/20 rounded-xl" />
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -220,14 +235,14 @@ export default function App() {
 
           </div>
 
-          {/* Экран Успеха внутри контура */}
+          {/* Экран Успеха */}
           {isPuzzleComplete && (
-            <div className="w-full px-4 mt-4 p-6 bg-green-500/10 border border-green-500/30 rounded-2xl flex flex-col items-center animate-fadeIn text-center">
+            <div className="w-full px-4 mt-4 p-6 bg-green-500/10 border border-green-500/30 rounded-2xl flex flex-col items-center text-center animate-fadeIn">
               <h2 className="text-xl font-bold text-green-400 mb-2">Чудово! Правильна відповідь! 🎉</h2>
-              <p className="text-xs text-slate-400 mb-4">Усі елементи зіставлено вірно.</p>
+              <p className="text-xs text-slate-400 mb-4">Всі кубики розставлені по місцях.</p>
               <button 
                 onClick={handleNextToSpeaking} 
-                className="bg-green-600 hover:bg-green-500 text-white font-semibold py-2.5 px-6 rounded-xl transition-all active:scale-95 shadow-md"
+                className="bg-green-600 hover:bg-green-500 text-white font-semibold py-2.5 px-6 rounded-xl transition-all transform active:scale-95 shadow-md"
               >
                 Далі (До мікрофону) →
               </button>
@@ -239,15 +254,15 @@ export default function App() {
 
       {/* КИТ-КОНТУР 4: РЕЖИМ МИКРОФОНА */}
       {gameState === 'SPEAKING' && (
-        <div className="w-full max-w-md p-6 bg-slate-800/40 border border-slate-700 rounded-2xl flex flex-col items-center text-center">
+        <div className="w-full max-w-md p-6 bg-slate-800/40 border border-slate-700 rounded-2xl flex flex-col items-center text-center animate-fadeIn">
           <div className="text-4xl mb-2">🎙️</div>
           <h2 className="text-lg font-bold text-indigo-400 mb-4">Модуль перевірки вимови</h2>
-          <div className="p-4 bg-slate-900/50 rounded-xl border border-slate-800 text-sm text-slate-400 mb-6">
+          <div className="p-4 bg-slate-900/50 rounded-xl border border-slate-800 text-sm text-slate-400 mb-6 w-full">
             Тут буде активовано нативний Web Speech API для розпізнавання мови малюка.
           </div>
           <button 
             onClick={() => setGameState('MENU')} 
-            className="text-xs text-slate-500 hover:text-slate-400 underline"
+            className="text-xs text-slate-500 hover:text-slate-400 underline transition-colors"
           >
             Повернутися на головну
           </button>
