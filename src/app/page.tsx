@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { categories, WordItem } from '../data/vocabulary';
+import { useAccount } from 'wagmi'; 
+import TransactionWrapper from '../components/TransactionWrapper'; 
 
 type GameState = 'MENU' | 'VOCABULARY' | 'PUZZLE' | 'SPEAKING';
 type FeedbackType = 'correct' | 'wrong' | 'complete' | null;
@@ -9,6 +11,8 @@ type FeedbackType = 'correct' | 'wrong' | 'complete' | null;
 export default function App() {
   const [gameState, setGameState] = useState<GameState>('MENU');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  
+  const { address, isConnected } = useAccount();
   
   // Состояния Пазла
   const [shuffledItems, setShuffledItems] = useState<WordItem[]>([]);
@@ -127,7 +131,6 @@ export default function App() {
     }
   };
 
-  // ЧИСТОЕ ПЕРЕКЛЮЧЕНИЕ РЕЖИМА ЗАПИСИ ОДНИМ ТАПОМ (TAP-TO-TALK)
   const toggleSpeechRecognition = () => {
     if (typeof window === 'undefined') return;
     if (speakingFeedback === 'correct') return;
@@ -138,7 +141,6 @@ export default function App() {
       return;
     }
 
-    // Если микрофон уже активен — ручная отмена сессии по повторному тапу
     if (isListening || recognitionActiveRef.current) {
       if (recognitionRef.current) {
         try { recognitionRef.current.stop(); } catch (e) {}
@@ -171,7 +173,6 @@ export default function App() {
 
       setDebugText(`Почуто: "${spokenText}"`);
 
-      // Фоновые слова-заменители для детской речи и шумных микрофонов
       const speechFallbacks: Record<string, string[]> = {
         bread: ['red', 'brad', 'dread', 'brend', 'breathe', 'breath', 'braid', 'brand', 'pret', 'bed', 'bad', 'ed', 'bray', 'break', 'head', 'said', 'bred', 'bret'],
         butter: ['better', 'button', 'water', 'matter', 'batur', 'butler', 'bat', 'bater', 'barter', 'bata', 'baba', 'pater', 'data', 'beta', 'buta', 'bato'],
@@ -181,7 +182,6 @@ export default function App() {
       const fallbacks = speechFallbacks[targetWord] || [];
       const isFallbackMatch = fallbacks.some(f => spokenText === f || spokenText.includes(f));
 
-      // Расширенные мягкие маски для категории "Море"
       let isSeaFuzzyMatch = false;
       if (targetWord === 'wave') {
         isSeaFuzzyMatch = spokenText.startsWith('w') || spokenText.startsWith('v') || spokenText.includes('av') || spokenText.includes('ay') || spokenText.includes('ey') || spokenText.includes('way') || spokenText.includes('why') || spokenText.includes('one') || spokenText.includes('with') || spokenText.includes('we') || spokenText === 'v' || spokenText === 'w' || spokenText.includes('wa');
@@ -249,10 +249,19 @@ export default function App() {
     <div className="w-full min-h-screen bg-[#0f172a] text-white font-sans p-6 flex flex-col items-center justify-center relative overflow-hidden select-none">
       
       {/* Шапка */}
-      <div className="text-center mb-8 z-10">
+      <div className="text-center mb-8 z-10 flex flex-col items-center gap-1">
         <h1 className="text-3xl font-bold tracking-tight text-white flex items-center justify-center gap-2">
           Nano English <span className="text-indigo-400">•</span> Tan-Tan
         </h1>
+        {isConnected && address ? (
+          <span className="text-[10px] font-mono bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded-md">
+            Onchain Ready: {address.slice(0,6)}...{address.slice(-4)}
+          </span>
+        ) : (
+          <span className="text-[10px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-md">
+            App Mode (Запусти через Base App для ончейн-модуля)
+          </span>
+        )}
       </div>
 
       {/* КИТ-КОНТУР 1: ГЛАВНОЕ МЕНЮ */}
@@ -319,7 +328,6 @@ export default function App() {
 
           <div className="grid grid-cols-2 gap-x-16 gap-y-4 w-full mb-6 relative">
             
-            {/* ЛЕВАЯ СТОРОНА: СЛОВА */}
             <div className="flex flex-col gap-4">
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wider px-1">1. Натисни Слово</span>
               {categories[activeCategory].items.map((wordItem) => {
@@ -364,7 +372,6 @@ export default function App() {
               })}
             </div>
 
-            {/* ПРАВАЯ СТОРОНА: КУБИКИ */}
             <div className="flex flex-col gap-4">
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wider px-1">2. Знайди Кубик</span>
               <div className="flex flex-col gap-4">
@@ -396,7 +403,7 @@ export default function App() {
 
           </div>
 
-          {/* СПАЙДИ-МОДАЛ */}
+          {/* НОВЫЙ ОНЧЕЙН-КОНТУР ДЛЯ МОДАЛА ПАЗЛА */}
           {isPuzzleComplete && (
             <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center z-50 p-6 animate-fadeIn">
               <div className="bg-slate-900 border-2 border-red-500/40 rounded-3xl p-10 max-w-sm w-full flex flex-col items-center shadow-2xl relative overflow-hidden">
@@ -413,15 +420,31 @@ export default function App() {
                 <h2 className="text-3xl font-black text-center text-white uppercase tracking-wide mb-1 relative z-10">
                   Чудово! 🎮
                 </h2>
-                <p className="text-base font-semibold text-green-400 text-center mb-8 relative z-10">
+                <p className="text-base font-semibold text-green-400 text-center mb-6 relative z-10">
                   Пазл повністю зібрано!
                 </p>
 
+                {/* Врезка Onchain-модуля для Пазла (Stage 1) */}
+                <div className="w-full z-10 flex flex-col items-center gap-4 mb-2">
+                  {isConnected && address ? (
+                    <TransactionWrapper 
+                      address={address} 
+                      category={categories[activeCategory].name} 
+                      stageId={1} 
+                    />
+                  ) : (
+                    <div className="text-center p-4 bg-slate-800 rounded-2xl border border-slate-700 w-full">
+                      <p className="text-xs text-amber-400 font-medium mb-1">⚠️ Запис недоступний</p>
+                      <span className="text-[10px] text-slate-400 block">Відкрийте гру всередині Base App</span>
+                    </div>
+                  )}
+                </div>
+
                 <button 
                   onClick={() => setGameState('SPEAKING')} 
-                  className="w-full bg-gradient-to-r from-red-600 to-blue-600 hover:from-red-500 hover:to-blue-500 text-white font-extrabold py-4 px-6 rounded-2xl shadow-xl shadow-blue-600/40 transition-all transform active:scale-95 text-center uppercase tracking-wider text-base relative z-10"
+                  className="w-full bg-gradient-to-r from-red-600 to-blue-600 hover:from-red-500 hover:to-blue-500 text-white font-extrabold py-3.5 px-6 rounded-2xl shadow-xl shadow-blue-600/40 transition-all transform active:scale-95 text-center uppercase tracking-wider text-sm relative z-10"
                 >
-                  Далі →
+                  Далі к вимові →
                 </button>
               </div>
             </div>
@@ -465,7 +488,6 @@ export default function App() {
                 <span className="text-base">➔</span> 🔊 СЛУХАТИ
               </button>
 
-              {/* ОТЛАДЧИК СИНХРОННОГО ВЫВОДА */}
               <div className="mt-4 w-full text-center">
                 <div className="text-[11px] font-mono text-slate-400 bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 shadow-inner">
                   Логгер браузера: <span className="text-indigo-400 font-bold">{debugText}</span>
@@ -481,12 +503,11 @@ export default function App() {
               
               {speakingFeedback === 'wrong' && (
                 <div className="absolute bottom-16 bg-red-500/20 border border-red-500/40 px-4 py-2 rounded-xl animate-scaleIn">
-                  <span className="text-xs font-bold text-red-400">❌ Спробуй ще раз</span>
+                  <span className="text-red-400 text-xs font-bold">❌ Спробуй ще раз</span>
                 </div>
               )}
             </div>
 
-            {/* СТАБИЛЬНЫЙ ОДИНОЧНЫЙ ТАП (TAP-TO-TALK) С ПОЛНОЙ АВТОНОМИЕЙ ЖИЗНЕННОГО ЦИКЛА SAFARI */}
             <div className="mt-8 flex flex-col items-center gap-3">
               <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
                 {isListening ? 'Натисніть ще раз для скасування' : 'Натисніть мікрофон та говоріть'}
@@ -525,16 +546,38 @@ export default function App() {
                   <h2 className="text-3xl font-black text-center text-white uppercase tracking-wide mb-1 relative z-10">
                     ТИ СУПЕРГЕРОЙ! 🏆
                   </h2>
-                  <p className="text-sm font-semibold text-indigo-400 text-center mb-8 relative z-10">
+                  <p className="text-sm font-semibold text-indigo-400 text-center mb-6 relative z-10">
                     Усі слова вивчено на відмінно!
                   </p>
 
-                  <button 
-                    onClick={handleExitToMenu} 
-                    className="w-full bg-gradient-to-r from-red-600 to-blue-600 hover:from-red-500 hover:to-blue-500 text-white font-extrabold py-4 px-6 rounded-2xl shadow-xl shadow-blue-600/40 transition-all transform active:scale-95 text-center uppercase tracking-wider text-base relative z-10"
-                  >
-                    В Головне Меню
-                  </button>
+                  {/* Врезка Onchain-модуля для Произношения (Stage 2) */}
+                  <div className="w-full z-10 flex flex-col items-center gap-4">
+                    {isConnected && address ? (
+                      <TransactionWrapper 
+                        address={address} 
+                        category={categories[activeCategory].name} 
+                        stageId={2} 
+                      />
+                    ) : (
+                      <div className="text-center p-4 bg-slate-800 rounded-2xl border border-slate-700 w-full">
+                        <p className="text-xs text-amber-400 font-medium mb-2">⚠️ Запис недоступний</p>
+                        <button 
+                          disabled
+                          className="w-full bg-slate-700 text-slate-400 py-3 rounded-xl text-xs font-bold cursor-not-allowed"
+                        >
+                          Запусти гру всередині кошелька Base App
+                        </button>
+                      </div>
+                    )}
+
+                    <button 
+                      onClick={handleExitToMenu} 
+                      className="w-full bg-slate-800 text-slate-400 hover:text-white border border-slate-700 py-3.5 px-6 rounded-2xl text-sm font-bold active:scale-95 transition-all text-center uppercase tracking-wider"
+                    >
+                      Пропустити і вийти
+                    </button>
+                  </div>
+
                 </div>
               </div>
             )}
