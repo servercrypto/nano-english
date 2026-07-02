@@ -26,6 +26,9 @@ export const metadata: Metadata = {
     description: 'Built with OnchainKit',
     images: [`${NEXT_PUBLIC_URL}/vibes/vibes-19.png`],
   },
+  other: {
+    'base:app_id': '6a4644f59653b8743a6756d7',
+  },
 };
 
 export default function RootLayout({
