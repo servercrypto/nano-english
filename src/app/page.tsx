@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { categories, WordItem } from '../data/vocabulary';
 import { useAccount } from 'wagmi'; 
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import TransactionWrapper from '../components/TransactionWrapper'; 
 
 type GameState = 'MENU' | 'VOCABULARY' | 'PUZZLE' | 'SPEAKING';
@@ -248,6 +249,11 @@ export default function App() {
   return (
     <div className="w-full min-h-screen bg-[#0f172a] text-white font-sans p-6 flex flex-col items-center justify-center relative overflow-hidden select-none">
       
+      {/* Кнопка связки в углу экрана */}
+      <div className="absolute top-4 right-4 z-50 transform scale-90 sm:scale-100">
+        <ConnectButton label="Связать кошелек" accountStatus="avatar" chainStatus="none" />
+      </div>
+
       {/* Шапка */}
       <div className="text-center mb-8 z-10 flex flex-col items-center gap-1">
         <h1 className="text-3xl font-bold tracking-tight text-white flex items-center justify-center gap-2">
@@ -255,11 +261,11 @@ export default function App() {
         </h1>
         {isConnected && address ? (
           <span className="text-[10px] font-mono bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded-md">
-            Onchain Ready: {address.slice(0,6)}...{address.slice(-4)}
+            Onchain Active: {address.slice(0,6)}...{address.slice(-4)}
           </span>
         ) : (
           <span className="text-[10px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-md">
-            App Mode (Запусти через Base App для ончейн-модуля)
+            Ожидание коннекта (Нажмите «Связать кошелек» вверху)
           </span>
         )}
       </div>
@@ -403,7 +409,6 @@ export default function App() {
 
           </div>
 
-          {/* НОВЫЙ ОНЧЕЙН-КОНТУР ДЛЯ МОДАЛА ПАЗЛА */}
           {isPuzzleComplete && (
             <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center z-50 p-6 animate-fadeIn">
               <div className="bg-slate-900 border-2 border-red-500/40 rounded-3xl p-10 max-w-sm w-full flex flex-col items-center shadow-2xl relative overflow-hidden">
@@ -424,7 +429,6 @@ export default function App() {
                   Пазл повністю зібрано!
                 </p>
 
-                {/* Врезка Onchain-модуля для Пазла (Stage 1) */}
                 <div className="w-full z-10 flex flex-col items-center gap-4 mb-2">
                   {isConnected && address ? (
                     <TransactionWrapper 
@@ -435,7 +439,7 @@ export default function App() {
                   ) : (
                     <div className="text-center p-4 bg-slate-800 rounded-2xl border border-slate-700 w-full">
                       <p className="text-xs text-amber-400 font-medium mb-1">⚠️ Запис недоступний</p>
-                      <span className="text-[10px] text-slate-400 block">Відкрийте гру всередині Base App</span>
+                      <span className="text-[10px] text-slate-400 block">Нажмите «Связать кошелек» вверху экрана</span>
                     </div>
                   )}
                 </div>
@@ -550,7 +554,6 @@ export default function App() {
                     Усі слова вивчено на відмінно!
                   </p>
 
-                  {/* Врезка Onchain-модуля для Произношения (Stage 2) */}
                   <div className="w-full z-10 flex flex-col items-center gap-4">
                     {isConnected && address ? (
                       <TransactionWrapper 
@@ -560,13 +563,8 @@ export default function App() {
                       />
                     ) : (
                       <div className="text-center p-4 bg-slate-800 rounded-2xl border border-slate-700 w-full">
-                        <p className="text-xs text-amber-400 font-medium mb-2">⚠️ Запис недоступний</p>
-                        <button 
-                          disabled
-                          className="w-full bg-slate-700 text-slate-400 py-3 rounded-xl text-xs font-bold cursor-not-allowed"
-                        >
-                          Запусти гру всередині кошелька Base App
-                        </button>
+                        <p className="text-xs text-amber-400 font-medium mb-1">⚠️ Запис недоступний</p>
+                        <span className="text-[10px] text-slate-400 block">Свяжите кошелек кнопкой в углу экрана</span>
                       </div>
                     )}
 

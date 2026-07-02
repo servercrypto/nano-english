@@ -1,7 +1,7 @@
 'use client';
 import { connectorsForWallets } from '@rainbow-me/rainbowkit';
 import {
-  coinbaseWallet,
+  coinbaseWallet as rainbowCoinbaseWallet,
   metaMaskWallet,
   rainbowWallet,
 } from '@rainbow-me/rainbowkit/wallets';
@@ -19,11 +19,16 @@ export function useWagmiConfig() {
   }
 
   return useMemo(() => {
+    // Явная инициализация Coinbase Wallet с поддержкой Smart Wallet сессий
+    const configuredCoinbaseWallet = rainbowCoinbaseWallet({
+      preference: 'smartWalletOnly',
+    });
+
     const connectors = connectorsForWallets(
       [
         {
           groupName: 'Recommended Wallet',
-          wallets: [coinbaseWallet],
+          wallets: [configuredCoinbaseWallet],
         },
         {
           groupName: 'Other Wallets',
