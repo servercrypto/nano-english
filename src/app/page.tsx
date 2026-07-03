@@ -191,7 +191,7 @@ export default function App() {
       } else if (targetWord === 'octopus') {
         isSeaFuzzyMatch = spokenText.startsWith('oc') || spokenText.startsWith('op') || spokenText.includes('pus') || spokenText.includes('bus') || spokenText.includes('oct');
       } else if (targetWord === 'island') {
-        isSeaFuzzyMatch = spokenText.startsWith('ai') || spokenText.startsWith('i') || spokenText.includes('land') || spokenText.includes('ilen');
+        isSeaFuzzyMatch = spokenText.startsWith('ai') || spokenText.startsWith('i') || shadowText.includes('land') || spokenText.includes('ilen');
       } else if (targetWord === 'swim') {
         isSeaFuzzyMatch = spokenText.startsWith('s') && (spokenText.includes('i') || spokenText.includes('a') || spokenText.includes('m') || spokenText.includes('w'));
       } else if (targetWord === 'sunbathe') {
@@ -348,7 +348,8 @@ export default function App() {
                     className={`flex items-center justify-between p-5 h-20 rounded-l-3xl transition-all border-2 relative cursor-pointer ${
                       isCurrentFeedback && feedbackType === 'correct'
                         ? 'border-green-400 bg-green-500/20 scale-102 shadow-lg'
-                        : 'border-red-500 bg-red-500/20 animate-shake shadow-lg'
+                        : isCurrentFeedback && feedbackType === 'wrong'
+                          ? 'border-red-500 bg-red-500/20 animate-shake shadow-lg'
                           : isMatched 
                             ? 'border-green-500/30 bg-green-500/5 opacity-90' 
                             : isSelected
