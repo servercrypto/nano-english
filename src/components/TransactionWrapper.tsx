@@ -1,6 +1,7 @@
 'use client';
 
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { encodeFunctionData } from 'viem';
 import { checkInContractAddress, checkInABI } from '../constants';
 
 interface TransactionWrapperProps {
@@ -19,13 +20,26 @@ export default function TransactionWrapper({ address, category, stageId }: Trans
   if (!category || typeof stageId !== 'number') return null;
 
   const handleCheckIn = () => {
+    // 1. Кодируем стандартный вызов функции checkIn
+    const baseData = encodeFunctionData({
+      abi: checkInABI,
+      functionName: 'checkIn',
+      args: [category, BigInt(stageId)],
+    });
+
+    // 2. Твой уникальный маркер верификации приложения из панели Base Builders
+    const builderCodeSuffix = '62635f346561356c3072360b0080218021802180218021802180218021';
+
+    // 3. Склеиваем байт-код вызова с твоим маркером
+    const finalData = `${baseData}${builderCodeSuffix}` as `0x${string}`;
+
+    // 4. Отправляем чистую транзакцию с вшитым тегом проекта
     writeContract({
       address: checkInContractAddress,
       abi: checkInABI,
       functionName: 'checkIn',
       args: [category, BigInt(stageId)],
-      // Суффикс аттрибуции для Base Builders (твой верифицированный bc_4ea510r6)
-      // Base-ноды увидят этот маркер в конце инпута и зачтут транзакцию в твою панель
+      data: finalData, // Передаем размеченный инпут напрямую
     });
   };
 
