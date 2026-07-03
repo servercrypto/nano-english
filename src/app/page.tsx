@@ -247,7 +247,7 @@ export default function App() {
     setGameState('MENU');
   };
 
-  // ЧИСТЫЙ BLUEPRINT ПО ОНЧЕЙН-АТТРИБУЦИИ С ПРИМЕНЕНИЕМ SENDTRANSACTION
+  // Метод триггера ончейн-записи (использует sendTransaction + суффикс аттрибуции)
   const executeCheckInTx = (catName: string, stageNum: number) => {
     const checkInContractAddress = "0x76239ba77449bc923e657df7331575ca0a1c1103";
     const checkInABI = [
@@ -263,20 +263,15 @@ export default function App() {
       }
     ];
 
-    // 1. Кодируем чистый инпут функции через viem
     const rawData = encodeFunctionData({
       abi: checkInABI,
       functionName: 'checkIn',
       args: [catName, BigInt(stageNum)],
     });
 
-    // 2. Хвост ончейн-аттрибуции проекта из дашборда Base Builders
     const builderSuffix = '62635f346561356c3072360b0080218021802180218021802180218021';
-
-    // 3. Склейка данных без ограничений типов на верхнем уровне
     const finalData = `${rawData}${builderSuffix}` as `0x${string}`;
 
-    // 4. Прямая трансляция в блокчейн через низкоуровневый интерфейс useSendTransaction
     sendTransaction({
       to: checkInContractAddress,
       data: finalData,
@@ -290,7 +285,7 @@ export default function App() {
   return (
     <div className="w-full min-h-[100dvh] bg-[#0f172a] text-white font-sans p-6 pb-12 flex flex-col items-center justify-between relative overflow-y-auto select-none">
       
-      {/* Стабильная независимая шапка */}
+      {/* Шапка */}
       <div className="w-full max-w-2xl flex flex-row items-center justify-between border-b border-slate-800/50 pb-4 mb-4 gap-4 z-20">
         <div className="flex flex-col text-left">
           <h1 className="text-xl md:text-2xl font-black tracking-tight text-white">
@@ -486,14 +481,14 @@ export default function App() {
                   )}
 
                   {isSuccess && <div className="text-[10px] text-green-400 font-mono text-center">Записано успішно! ✅</div>}
-                  {txError && <div className="text-[9px] text-red-400 font-mono text-center">Помилка подписи</div>}
+                  {txError && <div className="text-[9px] text-red-400 font-mono text-center">Помилка підпису</div>}
                 </div>
 
                 <button 
                   onClick={() => setGameState('SPEAKING')} 
                   className="w-full bg-gradient-to-r from-red-600 to-blue-600 hover:from-red-500 hover:to-blue-500 text-white font-extrabold py-3.5 px-6 rounded-2xl shadow-xl shadow-blue-600/40 transition-all transform active:scale-95 text-center uppercase tracking-wider text-sm relative z-10"
                 >
-                  Далі к вимові →
+                  Далі до вимови →
                 </button>
               </div>
             </div>
@@ -596,7 +591,7 @@ export default function App() {
                     ТИ СУПЕРГЕРОЙ! 🏆
                   </h2>
                   <p className="text-sm font-semibold text-indigo-400 text-center mb-6 relative z-10">
-                    Усі words вивчено на відмінно!
+                    Усі слова вивчено на відмінно!
                   </p>
 
                   <div className="w-full z-10 flex flex-col items-center gap-2">
