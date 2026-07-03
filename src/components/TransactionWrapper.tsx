@@ -1,17 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { 
-  Transaction, 
-  TransactionButton, 
-  TransactionSponsor, 
-  TransactionStatus, 
-  TransactionStatusAction, 
-  TransactionStatusLabel 
-} from '@coinbase/onchainkit/transaction';
+import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { checkInContractAddress, checkInABI } from '../constants';
-import { base } from 'wagmi/chains';
-import { NEXT_PUBLIC_CDP_API_KEY } from '../config';
 
 interface TransactionWrapperProps {
   address: `0x${string}`;
@@ -20,61 +10,50 @@ interface TransactionWrapperProps {
 }
 
 export default function TransactionWrapper({ address, category, stageId }: TransactionWrapperProps) {
-  const [debugError, setDebugError] = useState<string | null>(null);
+  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash,
+  });
 
   if (!category || typeof stageId !== 'number') return null;
 
-  const contracts = [
-    {
+  const handleCheckIn = () => {
+    writeContract({
       address: checkInContractAddress,
       abi: checkInABI,
       functionName: 'checkIn',
       args: [category, BigInt(stageId)],
-    }
-  ] as any;
-
-  // Формируем прямую ссылку на паймастер для передачи в свойства транзакции
-  const paymasterUrl = NEXT_PUBLIC_CDP_API_KEY 
-    ? `https://api.developer.coinbase.com/rpc/v1/base/${NEXT_PUBLIC_CDP_API_KEY}`
-    : undefined;
-
-  // Жестко задаем возможности транзакции (capabilities) согласно стандарту ERC-5792
-  const capabilities = paymasterUrl ? {
-    paymasterService: {
-      url: paymasterUrl,
-    },
-  } : undefined;
+    });
+  };
 
   return (
     <div className="flex flex-col w-[450px] max-w-full items-center gap-2">
-      <Transaction 
-        contracts={contracts}
-        chainId={base.id}
-        className="w-full"
-        capabilities={capabilities} // Внедряем спонсорство прямо в контекст вызова
-        onError={(err) => {
-          console.error('OnchainKit Error:', err);
-          setDebugError(JSON.stringify(err, null, 2) || err.message || 'Unknown OnchainKit Error');
-        }}
-        onSuccess={(response) => {
-          setDebugError(null); // Очищаем отладчик при успехе
-        }}
+      <button
+        onClick={handleCheckIn}
+        disabled={isPending || isConfirming}
+        className="w-full h-14 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 text-white font-bold rounded-2xl shadow-xl transition-all transform active:scale-98 uppercase tracking-wider text-sm"
       >
-        <TransactionButton 
-          className="w-full h-14 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl shadow-xl transition-all transform active:scale-98 uppercase tracking-wider text-sm"
-          text={`Записати: ${category} (Stage ${stageId})`}
-        />
-        <TransactionSponsor />
-        <TransactionStatus>
-          <TransactionStatusLabel className="text-xs text-green-400 font-mono" />
-          <TransactionStatusAction className="text-xs text-indigo-400" />
-        </TransactionStatus>
-      </Transaction>
+        {isPending ? 'Підписання у гаманці...' : isConfirming ? 'Очікування блоку...' : `Записати: ${category} (Stage ${stageId})`}
+      </button>
 
-      {debugError && !debugError.includes("4001") && (
-        <div className="w-full mt-2 p-3 bg-red-950/80 border border-red-500/30 rounded-xl text-[10px] text-red-400 font-mono text-left whitespace-pre-wrap max-h-[150px] overflow-y-auto">
-          <strong className="text-red-300 block mb-1">CDP/Paymaster Debug Log:</strong>
-          {debugError}
+      {isSuccess && (
+        <div className="text-xs text-green-400 font-mono text-center mt-1">
+          Успішно записано! ✅ <br />
+          <a 
+            href={`https://basescan.org/tx/${hash}`} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="underline text-indigo-400"
+          >
+            Переглянути в BaseScan
+          </a>
+        </div>
+      )}
+
+      {error && (
+        <div className="text-[10px] text-red-400 font-mono text-center max-w-full bg-red-500/10 p-2 rounded-xl border border-red-500/20 mt-1">
+          Помилка: {error.message.slice(0, 85)}...
         </div>
       )}
     </div>
