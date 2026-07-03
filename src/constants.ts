@@ -1,4 +1,4 @@
-export const BASE_SEPOLIA_CHAIN_ID = 84532;
+export const BASE_SEPOLIA_CHAIN_ID = 8453; // Изменили на Base Mainnet Chain ID
 
 // Старый контракт минта (шаблон OnchainKit)
 export const mintContractAddress = '0xA3e40bBe8E8579Cd2619Ef9C6fEA362b760dac9f';
@@ -18,8 +18,8 @@ export const mintABI = [
   },
 ] as const;
 
-// Новый рабочий контракт ончейн-чек-инов
-export const checkInContractAddress = '0x8a69EA95949f8cd9E6B2aCb3460A638A67935BAE';
+// Новый рабочий контракт ончейн-чек-инов в Base Mainnet
+export const checkInContractAddress = '0x756247796021Edab4401D07d80323CEb57Df382d'; // Твой новый Mainnet адрес
 export const checkInABI = [
   {
     type: "function",

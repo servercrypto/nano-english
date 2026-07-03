@@ -7,26 +7,21 @@ import {
 } from '@rainbow-me/rainbowkit/wallets';
 import { useMemo } from 'react';
 import { http, createConfig } from 'wagmi';
-import { baseSepoliaPreconf } from 'wagmi/chains';
+import { base } from 'wagmi/chains'; // Импортируем Mainnet Base
 import { NEXT_PUBLIC_WC_PROJECT_ID } from './config';
 
 export function useWagmiConfig() {
   const projectId = NEXT_PUBLIC_WC_PROJECT_ID ?? '';
   if (!projectId) {
-    const providerErrMessage =
-      'To connect to all Wallets you need to provide a NEXT_PUBLIC_WC_PROJECT_ID env variable';
-    throw new Error(providerErrMessage);
+    throw new Error('To connect to all Wallets you need to provide a NEXT_PUBLIC_WC_PROJECT_ID env variable');
   }
 
   return useMemo(() => {
-    // Безопасная инициализация под текущую версию RainbowKit без конфликта типов
-    const configuredCoinbaseWallet = coinbaseWallet;
-
     const connectors = connectorsForWallets(
       [
         {
           groupName: 'Recommended Wallet',
-          wallets: [configuredCoinbaseWallet],
+          wallets: [coinbaseWallet],
         },
         {
           groupName: 'Other Wallets',
@@ -40,12 +35,12 @@ export function useWagmiConfig() {
     );
 
     const wagmiConfig = createConfig({
-      chains: [baseSepoliaPreconf],
+      chains: [base], // Переключили на мейннет
       multiInjectedProviderDiscovery: false,
       connectors,
       ssr: true,
       transports: {
-        [baseSepoliaPreconf.id]: http(),
+        [base.id]: http(), // Переключили транспорт на мейннет
       },
     });
 
