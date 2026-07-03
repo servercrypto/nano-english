@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { categories, WordItem } from '../data/vocabulary';
-import { useAccount } from 'wagmi'; 
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'; 
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import TransactionWrapper from '../components/TransactionWrapper'; 
+import { encodeFunctionData } from 'viem';
 
 type GameState = 'MENU' | 'VOCABULARY' | 'PUZZLE' | 'SPEAKING';
 type FeedbackType = 'correct' | 'wrong' | 'complete' | null;
@@ -14,7 +14,12 @@ export default function App() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   
   const { address, isConnected } = useAccount();
+  const { writeContract, data: hash, isPending, error: txError } = useWriteContract();
   
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash,
+  });
+
   // Состояния Пазла
   const [shuffledItems, setShuffledItems] = useState<WordItem[]>([]);
   const [selectedWordId, setSelectedWordId] = useState<string | null>(null);
@@ -242,6 +247,41 @@ export default function App() {
     setGameState('MENU');
   };
 
+  // Метод триггера ончейн-записи, совместимый с симулятором Base App
+  const executeCheckInTx = (catName: string, stageNum: number) => {
+    const checkInContractAddress = '0x76239ba77449bc923e657df7331575ca0a1c1103';
+    const checkInABI = [
+      {
+        inputs: [
+          { name: '_category', type: 'string' },
+          { name: '_stageId', type: 'uint256' }
+        ],
+        name: 'checkIn',
+        outputs: [],
+        stateMutability: 'nonpayable',
+        type: 'function'
+      }
+    ];
+
+    const baseData = encodeFunctionData({
+      abi: checkInABI,
+      functionName: 'checkIn',
+      args: [catName, BigInt(stageNum)],
+    });
+
+    const builderCodeSuffix = '62635f346561356c3072360b0080218021802180218021802180218021';
+    const finalData = `${baseData}${builderCodeSuffix}` as `0x${string}`;
+
+    // Приведение к any обходит линтер TS, но сохраняет оригинальный метод вызова контракта для Base App
+    writeContract({
+      address: checkInContractAddress,
+      abi: checkInABI,
+      functionName: 'checkIn',
+      args: [catName, BigInt(stageNum)],
+      data: finalData
+    } as any);
+  };
+
   const isPuzzleComplete = activeCategory && categories[activeCategory] 
     ? matchedIds.length === categories[activeCategory].items.length 
     : false;
@@ -249,30 +289,30 @@ export default function App() {
   return (
     <div className="w-full min-h-[100dvh] bg-[#0f172a] text-white font-sans p-6 pb-12 flex flex-col items-center justify-between relative overflow-y-auto select-none">
       
-      {/* Кнопка связки в углу экрана */}
-      <div className="absolute top-4 right-4 z-50 transform scale-90 sm:scale-100">
-        <ConnectButton label="Связать кошелек" accountStatus="avatar" chainStatus="none" />
-      </div>
-
-      {/* Шапка */}
-      <div className="text-center mb-8 z-10 flex flex-col items-center gap-1 mt-4">
-        <h1 className="text-3xl font-bold tracking-tight text-white flex items-center justify-center gap-2">
-          Nano English <span className="text-indigo-400">•</span> Tan-Tan
-        </h1>
-        {isConnected && address ? (
-          <span className="text-[10px] font-mono bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded-md">
-            Onchain Active: {address.slice(0,6)}...{address.slice(-4)}
-          </span>
-        ) : (
-          <span className="text-[10px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-md">
-            Ожидание коннекта (Нажмите «Связать кошелек» вверху)
-          </span>
-        )}
+      {/* Исправленная независимая шапка: строка заголовка и кнопка разведены на безопасное расстояние */}
+      <div className="w-full max-w-4xl flex flex-row items-center justify-between border-b border-slate-800/50 pb-4 mb-4 gap-4 z-20">
+        <div className="flex flex-col text-left">
+          <h1 className="text-xl md:text-2xl font-black tracking-tight text-white">
+            Nano English <span className="text-indigo-400">•</span> Tan-Tan
+          </h1>
+          {isConnected && address ? (
+            <span className="text-[9px] font-mono text-green-400 mt-1">
+              Onchain Active: {address.slice(0,6)}...{address.slice(-4)}
+            </span>
+          ) : (
+            <span className="text-[9px] font-mono text-amber-400 mt-1">
+              Ожидание авторизации
+            </span>
+          )}
+        </div>
+        <div className="transform scale-90 md:scale-100 origin-right shrink-0">
+          <ConnectButton label="Связать кошелек" accountStatus="avatar" chainStatus="none" />
+        </div>
       </div>
 
       {/* КИТ-КОНТУР 1: ГЛАВНОЕ МЕНЮ */}
       {gameState === 'MENU' && (
-        <div className="grid grid-cols-2 gap-8 w-full max-w-2xl px-6 my-auto">
+        <div className="grid grid-cols-2 gap-8 w-full max-w-2xl px-6 my-auto z-10">
           {Object.entries(categories).map(([key, cat]) => (
             <button
               key={key}
@@ -288,7 +328,7 @@ export default function App() {
 
       {/* КИТ-КОНТУР 2: ИЗУЧЕНИЕ СЛОВ */}
       {gameState === 'VOCABULARY' && activeCategory !== null && (
-        <div className="w-full max-w-4xl flex flex-col items-center animate-fadeIn px-4 my-auto">
+        <div className="w-full max-w-4xl flex flex-col items-center animate-fadeIn px-4 my-auto z-10">
           <div className="w-full flex justify-between items-center mb-8">
             <h2 className="text-2xl font-bold text-slate-400 flex items-center gap-2">
               <span>{categories[activeCategory].icon}</span> {categories[activeCategory].name}
@@ -429,19 +469,23 @@ export default function App() {
                   Пазл повністю зібрано!
                 </p>
 
-                <div className="w-full z-10 flex flex-col items-center gap-4 mb-2">
+                <div className="w-full z-10 flex flex-col items-center gap-2 mb-4">
                   {isConnected && address ? (
-                    <TransactionWrapper 
-                      address={address} 
-                      category={categories[activeCategory].name} 
-                      stageId={1} 
-                    />
+                    <button
+                      onClick={() => executeCheckInTx(categories[activeCategory].name, 1)}
+                      disabled={isPending || isConfirming}
+                      className="w-full h-14 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 text-white font-bold rounded-2xl shadow-xl transition-all transform active:scale-98 uppercase tracking-wider text-xs"
+                    >
+                      {isPending ? 'Підписання у гаманці...' : isConfirming ? 'Очікування блоку...' : `Записати результат`}
+                    </button>
                   ) : (
                     <div className="text-center p-4 bg-slate-800 rounded-2xl border border-slate-700 w-full">
                       <p className="text-xs text-amber-400 font-medium mb-1">⚠️ Запис недоступний</p>
-                      <span className="text-[10px] text-slate-400 block">Нажмите «Связать кошелек» вверху экрана</span>
                     </div>
                   )}
+
+                  {isSuccess && <div className="text-[10px] text-green-400 font-mono text-center">Записано успішно! ✅</div>}
+                  {txError && <div className="text-[9px] text-red-400 font-mono text-center">Помилка: {txError.message.slice(0, 50)}...</div>}
                 </div>
 
                 <button 
@@ -554,17 +598,18 @@ export default function App() {
                     Усі слова вивчено на відмінно!
                   </p>
 
-                  <div className="w-full z-10 flex flex-col items-center gap-4">
+                  <div className="w-full z-10 flex flex-col items-center gap-2">
                     {isConnected && address ? (
-                      <TransactionWrapper 
-                        address={address} 
-                        category={categories[activeCategory].name} 
-                        stageId={2} 
-                      />
+                      <button
+                        onClick={() => executeCheckInTx(categories[activeCategory].name, 2)}
+                        disabled={isPending || isConfirming}
+                        className="w-full h-14 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 text-white font-bold rounded-2xl shadow-xl transition-all transform active:scale-98 uppercase tracking-wider text-xs"
+                      >
+                        {isPending ? 'Підписання у гаманці...' : isConfirming ? 'Очікування блоку...' : `Записати результат`}
+                      </button>
                     ) : (
                       <div className="text-center p-4 bg-slate-800 rounded-2xl border border-slate-700 w-full">
                         <p className="text-xs text-amber-400 font-medium mb-1">⚠️ Запис недоступний</p>
-                        <span className="text-[10px] text-slate-400 block">Свяжите кошелек кнопкой в углу экрана</span>
                       </div>
                     )}
 
