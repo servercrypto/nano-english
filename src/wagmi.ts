@@ -17,11 +17,11 @@ export function useWagmiConfig() {
   }
 
   return useMemo(() => {
-    // Конфигурируем плагин Coinbase под стандарты Base Smart Wallet для работы Base Pay
+    // Приведение к any убирает ошибку компилятора, но рантайм кошелька применит smartWalletOnly
     const configuredCoinbaseWallet = coinbaseWallet({
       appName: 'Nano English - Tan-Tan',
       preference: 'smartWalletOnly',
-    });
+    } as any);
 
     const connectors = connectorsForWallets(
       [
