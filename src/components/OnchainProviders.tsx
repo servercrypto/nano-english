@@ -3,9 +3,9 @@ import { OnchainKitProvider } from '@coinbase/onchainkit';
 import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { baseSepoliaPreconf } from 'wagmi/chains';
+import { base } from 'wagmi/chains';
 import { WagmiProvider } from 'wagmi';
-import { NEXT_PUBLIC_CDP_API_KEY } from '../config';
+import { NEXT_PUBLIC_CDP_API_KEY, NEXT_PUBLIC_PIMLICO_RPC_URL } from '../config';
 import { useWagmiConfig } from '../wagmi';
 
 type Props = { children: ReactNode };
@@ -18,7 +18,13 @@ function OnchainProviders({ children }: Props) {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <OnchainKitProvider apiKey={NEXT_PUBLIC_CDP_API_KEY} chain={baseSepoliaPreconf}>
+        <OnchainKitProvider 
+          apiKey={NEXT_PUBLIC_CDP_API_KEY} 
+          chain={base}
+          config={{
+            paymaster: NEXT_PUBLIC_PIMLICO_RPC_URL,
+          }}
+        >
           <RainbowKitProvider modalSize="compact">
             {children}
           </RainbowKitProvider>
