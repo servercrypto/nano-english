@@ -247,7 +247,7 @@ export default function App() {
     : false;
 
   return (
-    <div className="w-full min-h-screen bg-[#0f172a] text-white font-sans p-6 flex flex-col items-center justify-center relative overflow-hidden select-none">
+    <div className="w-full min-h-[100dvh] bg-[#0f172a] text-white font-sans p-6 pb-12 flex flex-col items-center justify-between relative overflow-y-auto select-none">
       
       {/* Кнопка связки в углу экрана */}
       <div className="absolute top-4 right-4 z-50 transform scale-90 sm:scale-100">
@@ -255,7 +255,7 @@ export default function App() {
       </div>
 
       {/* Шапка */}
-      <div className="text-center mb-8 z-10 flex flex-col items-center gap-1">
+      <div className="text-center mb-8 z-10 flex flex-col items-center gap-1 mt-4">
         <h1 className="text-3xl font-bold tracking-tight text-white flex items-center justify-center gap-2">
           Nano English <span className="text-indigo-400">•</span> Tan-Tan
         </h1>
@@ -272,7 +272,7 @@ export default function App() {
 
       {/* КИТ-КОНТУР 1: ГЛАВНОЕ МЕНЮ */}
       {gameState === 'MENU' && (
-        <div className="grid grid-cols-2 gap-8 w-full max-w-2xl px-6">
+        <div className="grid grid-cols-2 gap-8 w-full max-w-2xl px-6 my-auto">
           {Object.entries(categories).map(([key, cat]) => (
             <button
               key={key}
@@ -288,7 +288,7 @@ export default function App() {
 
       {/* КИТ-КОНТУР 2: ИЗУЧЕНИЕ СЛОВ */}
       {gameState === 'VOCABULARY' && activeCategory !== null && (
-        <div className="w-full max-w-4xl flex flex-col items-center animate-fadeIn px-4">
+        <div className="w-full max-w-4xl flex flex-col items-center animate-fadeIn px-4 my-auto">
           <div className="w-full flex justify-between items-center mb-8">
             <h2 className="text-2xl font-bold text-slate-400 flex items-center gap-2">
               <span>{categories[activeCategory].icon}</span> {categories[activeCategory].name}
@@ -323,7 +323,7 @@ export default function App() {
 
       {/* КИТ-КОНТУР 3: ИНТЕРЛОКИНГ ПАЗЛ */}
       {gameState === 'PUZZLE' && activeCategory !== null && (
-        <div className="w-full max-w-3xl flex flex-col items-center animate-fadeIn z-10 px-4">
+        <div className="w-full max-w-3xl flex flex-col items-center animate-fadeIn z-10 px-4 my-auto">
           
           <div className="w-full flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold text-slate-400">🧩 Пазл: {categories[activeCategory].name}</h2>
@@ -348,7 +348,7 @@ export default function App() {
                     className={`flex items-center justify-between p-5 h-20 rounded-l-3xl transition-all border-2 relative cursor-pointer ${
                       isCurrentFeedback && feedbackType === 'correct'
                         ? 'border-green-400 bg-green-500/20 scale-102 shadow-lg'
-                        : isCurrentFeedback && feedbackType === 'wrong'
+                        : 'border-red-500 bg-red-500/20 animate-shake shadow-lg'
                           ? 'border-red-500 bg-red-500/20 animate-shake shadow-lg'
                           : isMatched 
                             ? 'border-green-500/30 bg-green-500/5 opacity-90' 
@@ -461,7 +461,7 @@ export default function App() {
       {gameState === 'SPEAKING' && activeCategory !== null && (() => {
         const currentItem = categories[activeCategory].items[speakingIndex];
         return (
-          <div className="w-full max-w-2xl flex flex-col items-center animate-fadeIn px-4 z-10">
+          <div className="w-full max-w-2xl flex flex-col items-center animate-fadeIn px-4 z-10 my-auto">
             
             <div className="w-full flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-slate-400 flex items-center gap-2">
