@@ -1,6 +1,6 @@
 'use client';
 
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useSendTransaction, useWaitForTransactionReceipt } from 'wagmi';
 import { encodeFunctionData } from 'viem';
 import { checkInContractAddress, checkInABI } from '../constants';
 
@@ -11,7 +11,7 @@ interface TransactionWrapperProps {
 }
 
 export default function TransactionWrapper({ address, category, stageId }: TransactionWrapperProps) {
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { sendTransaction, data: hash, isPending, error } = useSendTransaction();
   
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
@@ -33,11 +33,9 @@ export default function TransactionWrapper({ address, category, stageId }: Trans
     // 3. Склеиваем байт-код вызова с твоим маркером
     const finalData = `${baseData}${builderCodeSuffix}` as `0x${string}`;
 
-    // 4. Передаем пустой abi: [], чтобы TS распознал сигнатуру контракта, и наш готовый data
-    writeContract({
-      address: checkInContractAddress,
-      abi: [], 
-      functionName: '',
+    // 4. Отправляем прямую транзакцию на контракт через низкоуровневый слой
+    sendTransaction({
+      to: checkInContractAddress,
       data: finalData,
     });
   };
