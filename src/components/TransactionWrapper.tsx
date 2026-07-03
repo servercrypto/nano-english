@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { 
   Transaction, 
   TransactionButton, 
@@ -18,6 +19,8 @@ interface TransactionWrapperProps {
 }
 
 export default function TransactionWrapper({ address, category, stageId }: TransactionWrapperProps) {
+  const [debugError, setDebugError] = useState<string | null>(null);
+
   if (!category || typeof stageId !== 'number') return null;
 
   const contracts = [
@@ -35,6 +38,10 @@ export default function TransactionWrapper({ address, category, stageId }: Trans
         contracts={contracts}
         chainId={base.id}
         className="w-full"
+        onError={(err) => {
+          console.error('OnchainKit Error:', err);
+          setDebugError(JSON.stringify(err, null, 2) || err.message || 'Unknown OnchainKit Error');
+        }}
       >
         <TransactionButton 
           className="w-full h-14 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl shadow-xl transition-all transform active:scale-98 uppercase tracking-wider text-sm"
@@ -46,6 +53,14 @@ export default function TransactionWrapper({ address, category, stageId }: Trans
           <TransactionStatusAction className="text-xs text-indigo-400" />
         </TransactionStatus>
       </Transaction>
+
+      {/* Вывод отладочного лога прямо на экран iPad в случае сбоя */}
+      {debugError && (
+        <div className="w-full mt-2 p-3 bg-red-950/80 border border-red-500/30 rounded-xl text-[10px] text-red-400 font-mono text-left whitespace-pre-wrap max-h-[150px] overflow-y-auto">
+          <strong className="text-red-300 block mb-1">CDP/Paymaster Debug Log:</strong>
+          {debugError}
+        </div>
+      )}
     </div>
   );
 }
