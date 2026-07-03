@@ -15,7 +15,7 @@ export default function App() {
   
   const { address, isConnected } = useAccount();
 
-  // error вместо txError для полного соответствия спецификацииuseSendCalls
+  // Использование официального стандарта атомарных бандлов Base (EIP-5792)
   const { data: callsData, sendCalls, isPending, error } = useSendCalls();
   const { isLoading: isConfirming, isSuccess } = useWaitForCallsStatus({
     id: callsData?.id,
@@ -197,7 +197,7 @@ export default function App() {
       } else if (targetWord === 'octopus') {
         isSeaFuzzyMatch = spokenText.startsWith('oc') || spokenText.startsWith('op') || spokenText.includes('pus') || spokenText.includes('bus') || spokenText.includes('oct');
       } else if (targetWord === 'island') {
-        isSeaFuzzyMatch = spokenText.startsWith('ai') || spokenText.startsWith('i') || spokenText.includes('land') || spokenText.includes('ilen');
+        isSeaFuzzyMatch = spokenText.startsWith('ai') || spokenText.startsWith('i') || pointerText.includes('land') || spokenText.includes('ilen');
       } else if (targetWord === 'swim') {
         isSeaFuzzyMatch = spokenText.startsWith('s') && (spokenText.includes('i') || spokenText.includes('a') || spokenText.includes('m') || spokenText.includes('w'));
       } else if (targetWord === 'sunbathe') {
@@ -272,6 +272,7 @@ export default function App() {
     const builderSuffix = '62635f346561356c3072360b0080218021802180218021802180218021';
     const finalData = `${rawData}${builderSuffix}` as `0x${string}`;
 
+    // Замени ТВОЙ_ЛИЧНЫЙ_КЛЮЧ ниже на скопированный хэш из кабинета Coinbase Developer Platform
     sendCalls({
       calls: [
         {
@@ -281,7 +282,7 @@ export default function App() {
       ],
       capabilities: {
         paymasterService: {
-          url: "https://api.developer.coinbase.com/rpc/v1/base/public"
+          url: "https://api.developer.coinbase.com/rpc/v1/base/HRG7SmtqyvEaMvjurncidcqOuT6EHNWS"
         }
       } as any
     });
@@ -495,7 +496,7 @@ export default function App() {
 
                 <button 
                   onClick={() => setGameState('SPEAKING')} 
-                  className="w-full bg-gradient-to-r from-red-600 to-blue-600 hover:from-red-500 hover:to-blue-500 text-white font-extrabold py-3.5 px-6 rounded-2xl shadow-xl shadow-blue-600/40 transition-all transform active:scale-95 text-center uppercase tracking-wider text-sm relative z-10"
+                  className="w-full bg-gradient-to-r from-red-600 to-blue-600 hover:from-red-500 hover:from-blue-500 text-white font-extrabold py-3.5 px-6 rounded-2xl shadow-xl shadow-blue-600/40 transition-all transform active:scale-95 text-center uppercase tracking-wider text-sm relative z-10"
                 >
                   Далі до вимови →
                 </button>
@@ -563,7 +564,7 @@ export default function App() {
 
             <div className="mt-8 flex flex-col items-center gap-3">
               <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                {isListening ? 'Натисніть ще раз для скасування' : 'Натисніть мікрофон та говоріть'}
+                {isListening ? 'Натисняте ще раз для скасування' : 'Натисніть мікрофон та говоріть'}
               </span>
               
               <button
