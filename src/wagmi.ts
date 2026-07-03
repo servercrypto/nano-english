@@ -17,13 +17,17 @@ export function useWagmiConfig() {
   }
 
   return useMemo(() => {
+    // Конфигурируем плагин Coinbase под стандарты Base Smart Wallet для работы Base Pay
+    const configuredCoinbaseWallet = coinbaseWallet({
+      appName: 'Nano English - Tan-Tan',
+      preference: 'smartWalletOnly',
+    });
+
     const connectors = connectorsForWallets(
       [
         {
           groupName: 'Recommended Wallet',
-          wallets: [
-            coinbaseWallet, // Возвращаем оригинальный коннектор RainbowKit
-          ],
+          wallets: [configuredCoinbaseWallet],
         },
         {
           groupName: 'Other Wallets',
@@ -38,7 +42,7 @@ export function useWagmiConfig() {
 
     const wagmiConfig = createConfig({
       chains: [base],
-      multiInjectedProviderDiscovery: true, // Включаем обратно автопоиск провайдеров
+      multiInjectedProviderDiscovery: true,
       connectors,
       ssr: true,
       transports: {
