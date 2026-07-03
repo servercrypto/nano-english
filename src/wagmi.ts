@@ -17,21 +17,16 @@ export function useWagmiConfig() {
   }
 
   return useMemo(() => {
-    // Приведение к any убирает ошибку компилятора, но рантайм кошелька применит smartWalletOnly
-    const configuredCoinbaseWallet = coinbaseWallet({
-      appName: 'Nano English - Tan-Tan',
-      preference: 'smartWalletOnly',
-    } as any);
-
+    // any[] гарантирует, что внутренние типы RainbowKit и Wagmi не будут конфликтовать при сборке
     const connectors = connectorsForWallets(
       [
         {
           groupName: 'Recommended Wallet',
-          wallets: [configuredCoinbaseWallet],
+          wallets: [coinbaseWallet] as any[],
         },
         {
           groupName: 'Other Wallets',
-          wallets: [rainbowWallet, metaMaskWallet],
+          wallets: [rainbowWallet, metaMaskWallet] as any[],
         },
       ],
       {
