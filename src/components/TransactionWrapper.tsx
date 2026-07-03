@@ -11,6 +11,7 @@ import {
 } from '@coinbase/onchainkit/transaction';
 import { checkInContractAddress, checkInABI } from '../constants';
 import { base } from 'wagmi/chains';
+import { NEXT_PUBLIC_CDP_API_KEY } from '../config';
 
 interface TransactionWrapperProps {
   address: `0x${string}`;
@@ -32,15 +33,31 @@ export default function TransactionWrapper({ address, category, stageId }: Trans
     }
   ] as any;
 
+  // Формируем прямую ссылку на паймастер для передачи в свойства транзакции
+  const paymasterUrl = NEXT_PUBLIC_CDP_API_KEY 
+    ? `https://api.developer.coinbase.com/rpc/v1/base/${NEXT_PUBLIC_CDP_API_KEY}`
+    : undefined;
+
+  // Жестко задаем возможности транзакции (capabilities) согласно стандарту ERC-5792
+  const capabilities = paymasterUrl ? {
+    paymasterService: {
+      url: paymasterUrl,
+    },
+  } : undefined;
+
   return (
     <div className="flex flex-col w-[450px] max-w-full items-center gap-2">
       <Transaction 
         contracts={contracts}
         chainId={base.id}
         className="w-full"
+        capabilities={capabilities} // Внедряем спонсорство прямо в контекст вызова
         onError={(err) => {
           console.error('OnchainKit Error:', err);
           setDebugError(JSON.stringify(err, null, 2) || err.message || 'Unknown OnchainKit Error');
+        }}
+        onSuccess={(response) => {
+          setDebugError(null); // Очищаем отладчик при успехе
         }}
       >
         <TransactionButton 
@@ -54,8 +71,7 @@ export default function TransactionWrapper({ address, category, stageId }: Trans
         </TransactionStatus>
       </Transaction>
 
-      {/* Вывод отладочного лога прямо на экран iPad в случае сбоя */}
-      {debugError && (
+      {debugError && !debugError.includes("4001") && (
         <div className="w-full mt-2 p-3 bg-red-950/80 border border-red-500/30 rounded-xl text-[10px] text-red-400 font-mono text-left whitespace-pre-wrap max-h-[150px] overflow-y-auto">
           <strong className="text-red-300 block mb-1">CDP/Paymaster Debug Log:</strong>
           {debugError}
