@@ -20,7 +20,7 @@ export default function TransactionWrapper({ address, category, stageId }: Trans
   if (!category || typeof stageId !== 'number') return null;
 
   const handleCheckIn = () => {
-    // 1. Кодируем стандартный вызов функции checkIn
+    // 1. Кодируем вызов функции checkIn в базовый байт-код
     const baseData = encodeFunctionData({
       abi: checkInABI,
       functionName: 'checkIn',
@@ -33,13 +33,10 @@ export default function TransactionWrapper({ address, category, stageId }: Trans
     // 3. Склеиваем байт-код вызова с твоим маркером
     const finalData = `${baseData}${builderCodeSuffix}` as `0x${string}`;
 
-    // 4. Отправляем чистую транзакцию с вшитым тегом проекта
+    // 4. Отправляем транзакцию в сыром режиме. Больше никакого конфликта типов.
     writeContract({
       address: checkInContractAddress,
-      abi: checkInABI,
-      functionName: 'checkIn',
-      args: [category, BigInt(stageId)],
-      data: finalData, // Передаем размеченный инпут напрямую
+      data: finalData,
     });
   };
 
