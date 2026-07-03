@@ -191,7 +191,7 @@ export default function App() {
       } else if (targetWord === 'octopus') {
         isSeaFuzzyMatch = spokenText.startsWith('oc') || spokenText.startsWith('op') || spokenText.includes('pus') || spokenText.includes('bus') || spokenText.includes('oct');
       } else if (targetWord === 'island') {
-        isSeaFuzzyMatch = spokenText.startsWith('ai') || spokenText.startsWith('i') || shadowText.includes('land') || spokenText.includes('ilen');
+        isSeaFuzzyMatch = spokenText.startsWith('ai') || spokenText.startsWith('i') || spokenText.includes('land') || spokenText.includes('ilen');
       } else if (targetWord === 'swim') {
         isSeaFuzzyMatch = spokenText.startsWith('s') && (spokenText.includes('i') || spokenText.includes('a') || spokenText.includes('m') || spokenText.includes('w'));
       } else if (targetWord === 'sunbathe') {
