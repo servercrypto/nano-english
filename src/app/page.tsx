@@ -349,7 +349,6 @@ export default function App() {
                       isCurrentFeedback && feedbackType === 'correct'
                         ? 'border-green-400 bg-green-500/20 scale-102 shadow-lg'
                         : 'border-red-500 bg-red-500/20 animate-shake shadow-lg'
-                          ? 'border-red-500 bg-red-500/20 animate-shake shadow-lg'
                           : isMatched 
                             ? 'border-green-500/30 bg-green-500/5 opacity-90' 
                             : isSelected
