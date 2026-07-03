@@ -8,7 +8,7 @@ import {
 import { useMemo } from 'react';
 import { http, createConfig } from 'wagmi';
 import { base } from 'wagmi/chains';
-import { NEXT_PUBLIC_WC_PROJECT_ID, NEXT_PUBLIC_PIMLICO_RPC_URL } from './config';
+import { NEXT_PUBLIC_WC_PROJECT_ID } from './config';
 
 export function useWagmiConfig() {
   const projectId = NEXT_PUBLIC_WC_PROJECT_ID ?? '';
@@ -21,7 +21,7 @@ export function useWagmiConfig() {
       [
         {
           groupName: 'Recommended Wallet',
-          wallets: [coinbaseWallet], // Вернули чистый, стабильный вызов
+          wallets: [coinbaseWallet],
         },
         {
           groupName: 'Other Wallets',
@@ -34,16 +34,13 @@ export function useWagmiConfig() {
       },
     );
 
-    // Принудительно направляем трафик через Pimlico, если ключ на месте
-    const rpcUrl = NEXT_PUBLIC_PIMLICO_RPC_URL ?? 'https://mainnet.base.org';
-
     const wagmiConfig = createConfig({
       chains: [base],
       multiInjectedProviderDiscovery: false,
       connectors,
       ssr: true,
       transports: {
-        [base.id]: http(rpcUrl),
+        [base.id]: http(),
       },
     });
 
