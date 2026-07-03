@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { base } from 'wagmi/chains';
 import { WagmiProvider } from 'wagmi';
-import { NEXT_PUBLIC_CDP_API_KEY, NEXT_PUBLIC_PIMLICO_RPC_URL } from '../config';
+import { NEXT_PUBLIC_CDP_API_KEY } from '../config';
 import { useWagmiConfig } from '../wagmi';
 
 type Props = { children: ReactNode };
@@ -22,7 +22,8 @@ function OnchainProviders({ children }: Props) {
           apiKey={NEXT_PUBLIC_CDP_API_KEY} 
           chain={base}
           config={{
-            paymaster: NEXT_PUBLIC_PIMLICO_RPC_URL,
+            // Указываем относительный путь к нашему прокси-серверу
+            paymaster: '/api/paymaster', 
           }}
         >
           <RainbowKitProvider modalSize="compact">
