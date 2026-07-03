@@ -33,9 +33,11 @@ export default function TransactionWrapper({ address, category, stageId }: Trans
     // 3. Склеиваем байт-код вызова с твоим маркером
     const finalData = `${baseData}${builderCodeSuffix}` as `0x${string}`;
 
-    // 4. Отправляем транзакцию в сыром режиме. Больше никакого конфликта типов.
+    // 4. Передаем пустой abi: [], чтобы TS распознал сигнатуру контракта, и наш готовый data
     writeContract({
       address: checkInContractAddress,
+      abi: [], 
+      functionName: '',
       data: finalData,
     });
   };
