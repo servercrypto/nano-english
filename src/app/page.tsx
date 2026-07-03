@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { categories, WordItem } from '../data/vocabulary';
-import { useAccount, useSendTransaction, useWaitForTransactionReceipt } from 'wagmi'; 
+import { useAccount, useSendCalls, useWaitForCallsStatus } from 'wagmi'; 
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { encodeFunctionData } from 'viem';
 
@@ -14,10 +14,11 @@ export default function App() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   
   const { address, isConnected } = useAccount();
-  const { sendTransaction, data: hash, isPending, error: txError } = useSendTransaction();
-  
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash,
+
+  // Реализация хуков атомарных бандлов согласно документации Base (EIP-5792)
+  const { data: callsData, sendCalls, isPending } = useSendCalls();
+  const { isLoading: isConfirming, isSuccess } = useWaitForCallsStatus({
+    id: callsData?.id,
   });
 
   // Состояния Пазла
@@ -247,7 +248,7 @@ export default function App() {
     setGameState('MENU');
   };
 
-  // Метод триггера ончейн-записи (использует sendTransaction + суффикс аттрибуции)
+  // Метод триггера ончейн-записи (использует пакетный sendCalls стандарта Base)
   const executeCheckInTx = (catName: string, stageNum: number) => {
     const checkInContractAddress = "0x76239ba77449bc923e657df7331575ca0a1c1103";
     const checkInABI = [
@@ -272,9 +273,19 @@ export default function App() {
     const builderSuffix = '62635f346561356c3072360b0080218021802180218021802180218021';
     const finalData = `${rawData}${builderSuffix}` as `0x${string}`;
 
-    sendTransaction({
-      to: checkInContractAddress,
-      data: finalData,
+    // Передаем вызов по стандарту EIP-5792, запрашивая публичный спонсорский Paymaster от Base
+    sendCalls({
+      calls: [
+        {
+          to: checkInContractAddress,
+          data: finalData,
+        }
+      ],
+      capabilities: {
+        paymasterService: {
+          url: "https://api.developer.coinbase.com/rpc/v1/base/public"
+        }
+      } as any
     });
   };
 
@@ -297,7 +308,7 @@ export default function App() {
             </span>
           ) : (
             <span className="text-[9px] font-mono text-amber-400 mt-1">
-              Ожидание авторизации
+              Очікування авторизації
             </span>
           )}
         </div>
