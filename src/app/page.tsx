@@ -269,14 +269,11 @@ export default function App() {
       args: [catName, BigInt(stageNum)],
     });
 
-    const builderSuffix = '62635f346561356c3072360b0080218021802180218021802180218021';
-    const finalData = `${rawData}${builderSuffix}` as `0x${string}`;
-
     sendCalls({
       calls: [
         {
           to: checkInContractAddress,
-          data: finalData,
+          data: rawData,
         }
       ],
       capabilities: {
