@@ -14,19 +14,28 @@ const queryClient = new QueryClient();
 function OnchainProviders({ children }: Props) {
   const wagmiConfig = useWagmiConfig();
 
-  // Создаем легитимный эндпоинт для нативного паймастера Coinbase на основе твоего API-ключа
-  const paymasterUrl = NEXT_PUBLIC_CDP_API_KEY 
-    ? `https://api.developer.coinbase.com/rpc/v1/base/${NEXT_PUBLIC_CDP_API_KEY}`
-    : undefined;
+  const rawInput = NEXT_PUBLIC_CDP_API_KEY?.trim() ?? '';
+
+  // Автоматически определяем, что ввел Оператор: полную ссылку или чистый ключ
+  const isUrl = rawInput.startsWith('http://') || rawInput.startsWith('https://');
+
+  // Вытаскиваем чистый ключ (хвост ссылки) если ввели URL, иначе оставляем как есть
+  const cleanApiKey = isUrl 
+    ? rawInput.split('/').pop() ?? ''
+    : rawInput;
+
+  // Собираем валидный эндпоинт паймастера
+  const paymasterUrl = isUrl 
+    ? rawInput 
+    : cleanApiKey ? `https://api.developer.coinbase.com/rpc/v1/base/${cleanApiKey}` : undefined;
 
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <OnchainKitProvider 
-          apiKey={NEXT_PUBLIC_CDP_API_KEY} 
+          apiKey={cleanApiKey || undefined} 
           chain={base}
           config={{
-            // Передаем полную ссылку паймастера, собранную на сервере из твоего ключа
             paymaster: paymasterUrl, 
           }}
         >
