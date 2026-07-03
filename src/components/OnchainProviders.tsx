@@ -9,11 +9,15 @@ import { NEXT_PUBLIC_CDP_API_KEY } from '../config';
 import { useWagmiConfig } from '../wagmi';
 
 type Props = { children: ReactNode };
-
 const queryClient = new QueryClient();
 
 function OnchainProviders({ children }: Props) {
   const wagmiConfig = useWagmiConfig();
+
+  // Создаем легитимный эндпоинт для нативного паймастера Coinbase на основе твоего API-ключа
+  const paymasterUrl = NEXT_PUBLIC_CDP_API_KEY 
+    ? `https://api.developer.coinbase.com/rpc/v1/base/${NEXT_PUBLIC_CDP_API_KEY}`
+    : undefined;
 
   return (
     <WagmiProvider config={wagmiConfig}>
@@ -22,8 +26,8 @@ function OnchainProviders({ children }: Props) {
           apiKey={NEXT_PUBLIC_CDP_API_KEY} 
           chain={base}
           config={{
-            // Указываем относительный путь к нашему прокси-серверу
-            paymaster: '/api/paymaster', 
+            // Передаем полную ссылку паймастера, собранную на сервере из твоего ключа
+            paymaster: paymasterUrl, 
           }}
         >
           <RainbowKitProvider modalSize="compact">
