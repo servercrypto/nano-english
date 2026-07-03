@@ -1,6 +1,7 @@
 'use client';
 
-import { useWriteContract, useAccount } from 'wagmi';
+import { useSendCalls } from 'wagmi/experimental';
+import { encodeFunctionData } from 'viem';
 import { checkInContractAddress, checkInABI } from '../constants';
 
 interface TransactionWrapperProps {
@@ -10,17 +11,28 @@ interface TransactionWrapperProps {
 }
 
 export default function TransactionWrapper({ address, category, stageId }: TransactionWrapperProps) {
-  const { writeContract, isPending, isSuccess, error } = useWriteContract();
+  // Используем хук для отправки вызовов смарт-аккаунта (ERC-5792)
+  const { sendCalls, isPending, isSuccess, error } = useSendCalls();
 
   const handleCheckIn = () => {
     if (!category || typeof stageId !== 'number') return;
 
-    // Прямой вызов метода смарт-контракта через настроенный транспорт Wagmi
-    writeContract({
-      address: checkInContractAddress,
+    // Кодируем параметры функции для отправки внутри пакета call
+    const callData = encodeFunctionData({
       abi: checkInABI,
       functionName: 'checkIn',
       args: [category, BigInt(stageId)],
+    });
+
+    // Отправляем вызов через wallet_sendCalls, который нативно поддерживает спонсорство газа через RPC транспорта
+    sendCalls({
+      calls: [
+        {
+          to: checkInContractAddress,
+          data: callData,
+          value: BigInt(0),
+        },
+      ],
     });
   };
 
@@ -31,18 +43,18 @@ export default function TransactionWrapper({ address, category, stageId }: Trans
         disabled={isPending || !category}
         className="w-full h-14 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 text-white font-bold rounded-2xl shadow-xl transition-all transform active:scale-98 uppercase tracking-wider text-sm"
       >
-        {isPending ? 'Надсилання...' : category ? `Записати: ${category} (Stage ${stageId})` : 'Чек-ін'}
+        {isPending ? 'Обробка смарт-виклику...' : category ? `Записати: ${category} (Stage ${stageId})` : 'Чек-ін'}
       </button>
 
       {isSuccess && (
         <span className="text-xs text-green-400 font-mono animate-fadeIn mt-1">
-          Успішно записано в блокчейн! ✅
+          Смарт-транзакція успішно виконана! ✅
         </span>
       )}
 
       {error && (
         <div className="text-[10px] text-red-400 font-mono text-center max-w-full bg-red-500/10 p-2 rounded-xl border border-red-500/20 mt-1">
-          Помилка: {error.message.slice(0, 75)}...
+          Помилка: {error.message.slice(0, 85)}...
         </div>
       )}
     </div>
