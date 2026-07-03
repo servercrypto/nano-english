@@ -15,8 +15,8 @@ export default function App() {
   
   const { address, isConnected } = useAccount();
 
-  // Реализация хуков атомарных бандлов согласно документации Base (EIP-5792)
-  const { data: callsData, sendCalls, isPending } = useSendCalls();
+  // error вместо txError для полного соответствия спецификацииuseSendCalls
+  const { data: callsData, sendCalls, isPending, error } = useSendCalls();
   const { isLoading: isConfirming, isSuccess } = useWaitForCallsStatus({
     id: callsData?.id,
   });
@@ -248,7 +248,6 @@ export default function App() {
     setGameState('MENU');
   };
 
-  // Метод триггера ончейн-записи (использует пакетный sendCalls стандарта Base)
   const executeCheckInTx = (catName: string, stageNum: number) => {
     const checkInContractAddress = "0x76239ba77449bc923e657df7331575ca0a1c1103";
     const checkInABI = [
@@ -273,7 +272,6 @@ export default function App() {
     const builderSuffix = '62635f346561356c3072360b0080218021802180218021802180218021';
     const finalData = `${rawData}${builderSuffix}` as `0x${string}`;
 
-    // Передаем вызов по стандарту EIP-5792, запрашивая публичный спонсорский Paymaster от Base
     sendCalls({
       calls: [
         {
@@ -492,7 +490,7 @@ export default function App() {
                   )}
 
                   {isSuccess && <div className="text-[10px] text-green-400 font-mono text-center">Записано успішно! ✅</div>}
-                  {txError && <div className="text-[9px] text-red-400 font-mono text-center">Помилка підпису</div>}
+                  {error && <div className="text-[9px] text-red-400 font-mono text-center">Помилка підпису</div>}
                 </div>
 
                 <button 
