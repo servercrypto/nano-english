@@ -17,18 +17,11 @@ export function useWagmiConfig() {
   }
 
   return useMemo(() => {
-    // Настраиваем коннектор Coinbase с явной поддержкой Smart Wallet сессий
     const connectors = connectorsForWallets(
       [
         {
           groupName: 'Recommended Wallet',
-          wallets: [
-            coinbaseWallet.preference({
-              options: {
-                smartWalletOnly: false,
-              }
-            })
-          ],
+          wallets: [coinbaseWallet], // Вернули чистый, стабильный вызов
         },
         {
           groupName: 'Other Wallets',
@@ -41,7 +34,7 @@ export function useWagmiConfig() {
       },
     );
 
-    // Берем твою ссылку Pimlico. Если она пустая — откатываемся на стандартный публичный RPC Base
+    // Принудительно направляем трафик через Pimlico, если ключ на месте
     const rpcUrl = NEXT_PUBLIC_PIMLICO_RPC_URL ?? 'https://mainnet.base.org';
 
     const wagmiConfig = createConfig({
@@ -50,7 +43,6 @@ export function useWagmiConfig() {
       connectors,
       ssr: true,
       transports: {
-        // Заставляем Wagmi гнать все транзакции через Pimlico
         [base.id]: http(rpcUrl),
       },
     });
