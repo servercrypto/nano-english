@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { categories, WordItem } from '../data/vocabulary';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'; 
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { encodeFunctionData } from 'viem';
 
 type GameState = 'MENU' | 'VOCABULARY' | 'PUZZLE' | 'SPEAKING';
 type FeedbackType = 'correct' | 'wrong' | 'complete' | null;
@@ -247,39 +246,28 @@ export default function App() {
     setGameState('MENU');
   };
 
-  // Метод триггера ончейн-записи, совместимый с симулятором Base App
+  // ЧИСТЫЙ ОРИГИНАЛЬНЫЙ ВЫЗОВ CONTRACT ДЛЯ СНЯТИЯ БЛОКИРОВКИ СИМУЛЯТОРА BASE APP
   const executeCheckInTx = (catName: string, stageNum: number) => {
-    const checkInContractAddress = '0x76239ba77449bc923e657df7331575ca0a1c1103';
+    const checkInContractAddress = "0x76239ba77449bc923e657df7331575ca0a1c1103";
     const checkInABI = [
       {
-        inputs: [
-          { name: '_category', type: 'string' },
-          { name: '_stageId', type: 'uint256' }
+        "inputs": [
+          { "name": "_category", "type": "string" },
+          { "name": "_stageId", "type": "uint256" }
         ],
-        name: 'checkIn',
-        outputs: [],
-        stateMutability: 'nonpayable',
-        type: 'function'
+        "name": "checkIn",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
       }
     ];
 
-    const baseData = encodeFunctionData({
-      abi: checkInABI,
-      functionName: 'checkIn',
-      args: [catName, BigInt(stageNum)],
-    });
-
-    const builderCodeSuffix = '62635f346561356c3072360b0080218021802180218021802180218021';
-    const finalData = `${baseData}${builderCodeSuffix}` as `0x${string}`;
-
-    // Приведение к any обходит линтер TS, но сохраняет оригинальный метод вызова контракта для Base App
     writeContract({
       address: checkInContractAddress,
       abi: checkInABI,
-      functionName: 'checkIn',
+      functionName: "checkIn",
       args: [catName, BigInt(stageNum)],
-      data: finalData
-    } as any);
+    });
   };
 
   const isPuzzleComplete = activeCategory && categories[activeCategory] 
@@ -289,8 +277,8 @@ export default function App() {
   return (
     <div className="w-full min-h-[100dvh] bg-[#0f172a] text-white font-sans p-6 pb-12 flex flex-col items-center justify-between relative overflow-y-auto select-none">
       
-      {/* Исправленная независимая шапка: строка заголовка и кнопка разведены на безопасное расстояние */}
-      <div className="w-full max-w-4xl flex flex-row items-center justify-between border-b border-slate-800/50 pb-4 mb-4 gap-4 z-20">
+      {/* Стабильная независимая шапка: w-full max-w-2xl жестко удерживает границы по краям */}
+      <div className="w-full max-w-2xl flex flex-row items-center justify-between border-b border-slate-800/50 pb-4 mb-4 gap-4 z-20">
         <div className="flex flex-col text-left">
           <h1 className="text-xl md:text-2xl font-black tracking-tight text-white">
             Nano English <span className="text-indigo-400">•</span> Tan-Tan
@@ -356,7 +344,7 @@ export default function App() {
             onClick={() => setGameState('PUZZLE')} 
             className="mt-10 w-full max-w-sm bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 px-8 rounded-2xl shadow-xl shadow-indigo-600/20 transition-all transform active:scale-95 text-center text-lg"
           >
-            Грати в Пазл →
+            Grading Puzzle →
           </button>
         </div>
       )}
@@ -599,19 +587,13 @@ export default function App() {
                   </p>
 
                   <div className="w-full z-10 flex flex-col items-center gap-2">
-                    {isConnected && address ? (
-                      <button
-                        onClick={() => executeCheckInTx(categories[activeCategory].name, 2)}
-                        disabled={isPending || isConfirming}
-                        className="w-full h-14 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 text-white font-bold rounded-2xl shadow-xl transition-all transform active:scale-98 uppercase tracking-wider text-xs"
-                      >
-                        {isPending ? 'Підписання у гаманці...' : isConfirming ? 'Очікування блоку...' : `Записати результат`}
-                      </button>
-                    ) : (
-                      <div className="text-center p-4 bg-slate-800 rounded-2xl border border-slate-700 w-full">
-                        <p className="text-xs text-amber-400 font-medium mb-1">⚠️ Запис недоступний</p>
-                      </div>
-                    )}
+                    <button
+                      onClick={() => executeCheckInTx(categories[activeCategory].name, 2)}
+                      disabled={isPending || isConfirming}
+                      className="w-full h-14 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 text-white font-bold rounded-2xl shadow-xl transition-all transform active:scale-98 uppercase tracking-wider text-xs"
+                    >
+                      {isPending ? 'Підписання у гаманці...' : isConfirming ? 'Очікування блоку...' : `Записати результат`}
+                    </button>
 
                     <button 
                       onClick={handleExitToMenu} 
