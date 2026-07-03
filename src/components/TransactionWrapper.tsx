@@ -1,83 +1,50 @@
 'use client';
-import {
-  Transaction,
-  TransactionButton,
-  TransactionStatus,
-  TransactionStatusAction,
-  TransactionStatusLabel,
-} from '@coinbase/onchainkit/transaction';
-import type {
-  TransactionError,
-  TransactionResponse,
-} from '@coinbase/onchainkit/transaction';
-import type { Address, ContractFunctionParameters } from 'viem';
-import {
-  BASE_SEPOLIA_CHAIN_ID,
-  mintABI,
-  mintContractAddress,
-  checkInContractAddress,
-  checkInABI,
-} from '../constants';
+
+import { useWriteContract, useAccount } from 'wagmi';
+import { checkInContractAddress, checkInABI } from '../constants';
 
 interface TransactionWrapperProps {
-  address: Address;
+  address: `0x${string}`;
   category?: string;
   stageId?: number;
 }
 
 export default function TransactionWrapper({ address, category, stageId }: TransactionWrapperProps) {
-  
-  // Динамическая сборка полезной нагрузки (Payload) транзакции
-  const contracts = (() => {
-    if (category && typeof stageId === 'number') {
-      // Контур нашего смарт-контракта чек-инов
-      return [
-        {
-          address: checkInContractAddress,
-          abi: checkInABI,
-          functionName: 'checkIn',
-          args: [category, BigInt(stageId)],
-        },
-      ];
-    }
-    
-    // Дефолтный контур минта OnchainKit
-    return [
-      {
-        address: mintContractAddress,
-        abi: mintABI,
-        functionName: 'mint',
-        args: [address],
-      },
-    ];
-  })() as unknown as ContractFunctionParameters[];
+  const { writeContract, isPending, isSuccess, error } = useWriteContract();
 
-  const handleError = (err: TransactionError) => {
-    console.error('Transaction error:', err);
-  };
+  const handleCheckIn = () => {
+    if (!category || typeof stageId !== 'number') return;
 
-  const handleSuccess = (response: TransactionResponse) => {
-    console.log('Transaction successful', response);
+    // Прямой вызов метода смарт-контракта через настроенный транспорт Wagmi
+    writeContract({
+      address: checkInContractAddress,
+      abi: checkInABI,
+      functionName: 'checkIn',
+      args: [category, BigInt(stageId)],
+    });
   };
 
   return (
-    <div className="flex w-[450px]">
-      <Transaction
-        contracts={contracts}
-        className="w-[450px]"
-        chainId={BASE_SEPOLIA_CHAIN_ID}
-        onError={handleError}
-        onSuccess={handleSuccess}
+    <div className="flex flex-col w-[450px] max-w-full items-center gap-2">
+      <button
+        onClick={handleCheckIn}
+        disabled={isPending || !category}
+        className="w-full h-14 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 text-white font-bold rounded-2xl shadow-xl transition-all transform active:scale-98 uppercase tracking-wider text-sm"
       >
-        <TransactionButton 
-          text={category ? `Check-in: ${category} (Stage ${stageId})` : "Mint NFT"}
-          className="mt-0 mr-auto ml-auto w-[450px] max-w-full text-[white]" 
-        />
-        <TransactionStatus>
-          <TransactionStatusLabel />
-          <TransactionStatusAction />
-        </TransactionStatus>
-      </Transaction>
+        {isPending ? 'Надсилання...' : category ? `Записати: ${category} (Stage ${stageId})` : 'Чек-ін'}
+      </button>
+
+      {isSuccess && (
+        <span className="text-xs text-green-400 font-mono animate-fadeIn mt-1">
+          Успішно записано в блокчейн! ✅
+        </span>
+      )}
+
+      {error && (
+        <div className="text-[10px] text-red-400 font-mono text-center max-w-full bg-red-500/10 p-2 rounded-xl border border-red-500/20 mt-1">
+          Помилка: {error.message.slice(0, 75)}...
+        </div>
+      )}
     </div>
   );
 }
