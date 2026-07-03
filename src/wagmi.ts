@@ -7,8 +7,8 @@ import {
 } from '@rainbow-me/rainbowkit/wallets';
 import { useMemo } from 'react';
 import { http, createConfig } from 'wagmi';
-import { base } from 'wagmi/chains'; // Импортируем Mainnet Base
-import { NEXT_PUBLIC_WC_PROJECT_ID } from './config';
+import { base } from 'wagmi/chains';
+import { NEXT_PUBLIC_WC_PROJECT_ID, NEXT_PUBLIC_PIMLICO_RPC_URL } from './config';
 
 export function useWagmiConfig() {
   const projectId = NEXT_PUBLIC_WC_PROJECT_ID ?? '';
@@ -17,11 +17,18 @@ export function useWagmiConfig() {
   }
 
   return useMemo(() => {
+    // Настраиваем коннектор Coinbase с явной поддержкой Smart Wallet сессий
     const connectors = connectorsForWallets(
       [
         {
           groupName: 'Recommended Wallet',
-          wallets: [coinbaseWallet],
+          wallets: [
+            coinbaseWallet.preference({
+              options: {
+                smartWalletOnly: false,
+              }
+            })
+          ],
         },
         {
           groupName: 'Other Wallets',
@@ -34,13 +41,17 @@ export function useWagmiConfig() {
       },
     );
 
+    // Берем твою ссылку Pimlico. Если она пустая — откатываемся на стандартный публичный RPC Base
+    const rpcUrl = NEXT_PUBLIC_PIMLICO_RPC_URL ?? 'https://mainnet.base.org';
+
     const wagmiConfig = createConfig({
-      chains: [base], // Переключили на мейннет
+      chains: [base],
       multiInjectedProviderDiscovery: false,
       connectors,
       ssr: true,
       transports: {
-        [base.id]: http(), // Переключили транспорт на мейннет
+        // Заставляем Wagmi гнать все транзакции через Pimlico
+        [base.id]: http(rpcUrl),
       },
     });
 
