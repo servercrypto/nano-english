@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { categories, WordItem } from '../data/vocabulary';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'; 
+import { useAccount, useSendTransaction, useWaitForTransactionReceipt } from 'wagmi'; 
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { encodeFunctionData } from 'viem';
 
 type GameState = 'MENU' | 'VOCABULARY' | 'PUZZLE' | 'SPEAKING';
 type FeedbackType = 'correct' | 'wrong' | 'complete' | null;
@@ -13,7 +14,7 @@ export default function App() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   
   const { address, isConnected } = useAccount();
-  const { writeContract, data: hash, isPending, error: txError } = useWriteContract();
+  const { sendTransaction, data: hash, isPending, error: txError } = useSendTransaction();
   
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
@@ -246,7 +247,7 @@ export default function App() {
     setGameState('MENU');
   };
 
-  // ЧИСТЫЙ ОРИГИНАЛЬНЫЙ ВЫЗОВ CONTRACT ДЛЯ СНЯТИЯ БЛОКИРОВКИ СИМУЛЯТОРА BASE APP
+  // ЧИСТЫЙ BLUEPRINT ПО ОНЧЕЙН-АТТРИБУЦИИ С ПРИМЕНЕНИЕМ SENDTRANSACTION
   const executeCheckInTx = (catName: string, stageNum: number) => {
     const checkInContractAddress = "0x76239ba77449bc923e657df7331575ca0a1c1103";
     const checkInABI = [
@@ -262,11 +263,23 @@ export default function App() {
       }
     ];
 
-    writeContract({
-      address: checkInContractAddress,
+    // 1. Кодируем чистый инпут функции через viem
+    const rawData = encodeFunctionData({
       abi: checkInABI,
-      functionName: "checkIn",
+      functionName: 'checkIn',
       args: [catName, BigInt(stageNum)],
+    });
+
+    // 2. Хвост ончейн-аттрибуции проекта из дашборда Base Builders
+    const builderSuffix = '62635f346561356c3072360b0080218021802180218021802180218021';
+
+    // 3. Склейка данных без ограничений типов на верхнем уровне
+    const finalData = `${rawData}${builderSuffix}` as `0x${string}`;
+
+    // 4. Прямая трансляция в блокчейн через низкоуровневый интерфейс useSendTransaction
+    sendTransaction({
+      to: checkInContractAddress,
+      data: finalData,
     });
   };
 
@@ -277,7 +290,7 @@ export default function App() {
   return (
     <div className="w-full min-h-[100dvh] bg-[#0f172a] text-white font-sans p-6 pb-12 flex flex-col items-center justify-between relative overflow-y-auto select-none">
       
-      {/* Стабильная независимая шапка: w-full max-w-2xl жестко удерживает границы по краям */}
+      {/* Стабильная независимая шапка */}
       <div className="w-full max-w-2xl flex flex-row items-center justify-between border-b border-slate-800/50 pb-4 mb-4 gap-4 z-20">
         <div className="flex flex-col text-left">
           <h1 className="text-xl md:text-2xl font-black tracking-tight text-white">
@@ -344,7 +357,7 @@ export default function App() {
             onClick={() => setGameState('PUZZLE')} 
             className="mt-10 w-full max-w-sm bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 px-8 rounded-2xl shadow-xl shadow-indigo-600/20 transition-all transform active:scale-95 text-center text-lg"
           >
-            Grading Puzzle →
+            Грати в Пазл →
           </button>
         </div>
       )}
@@ -473,7 +486,7 @@ export default function App() {
                   )}
 
                   {isSuccess && <div className="text-[10px] text-green-400 font-mono text-center">Записано успішно! ✅</div>}
-                  {txError && <div className="text-[9px] text-red-400 font-mono text-center">Помилка: {txError.message.slice(0, 50)}...</div>}
+                  {txError && <div className="text-[9px] text-red-400 font-mono text-center">Помилка подписи</div>}
                 </div>
 
                 <button 
@@ -583,7 +596,7 @@ export default function App() {
                     ТИ СУПЕРГЕРОЙ! 🏆
                   </h2>
                   <p className="text-sm font-semibold text-indigo-400 text-center mb-6 relative z-10">
-                    Усі слова вивчено на відмінно!
+                    Усі words вивчено на відмінно!
                   </p>
 
                   <div className="w-full z-10 flex flex-col items-center gap-2">
