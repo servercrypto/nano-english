@@ -3,6 +3,7 @@ export interface WordItem {
   word: string;
   translation: string;
   emoji: string;
+  image?: string;
 }
 
 export const categories: Record<string, { name: string; icon: string; items: WordItem[] }> = {
@@ -28,6 +29,18 @@ export const categories: Record<string, { name: string; icon: string; items: Wor
       { id: "s4", word: "Island", translation: "Острів", emoji: "🏝️" },
       { id: "s5", word: "Swim", translation: "Плавати", emoji: "🏊" },
       { id: "s6", word: "Sunbathe", translation: "Засмагати", emoji: "🏖️" }
+    ]
+  },
+  actions: {
+    name: "Дія",
+    icon: "🏃",
+    items: [
+      { id: "a1", word: "Hug", translation: "Обіймати", emoji: "🤗", image: "/images/actions/Hug.png" },
+      { id: "a2", word: "Drive", translation: "Водити", emoji: "🚗", image: "/images/actions/Drive.png" },
+      { id: "a3", word: "Sing", translation: "Співати", emoji: "🎤", image: "/images/actions/Sing.png" },
+      { id: "a4", word: "Read", translation: "Читати", emoji: "📖", image: "/images/actions/Read.PNG" },
+      { id: "a5", word: "Drink", translation: "Пити", emoji: "🥛", image: "/images/actions/Drink.png" },
+      { id: "a6", word: "Play", translation: "Грати", emoji: "🧸", image: "/images/actions/Play.png" }
     ]
   }
 };

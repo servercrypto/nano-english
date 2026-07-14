@@ -180,31 +180,59 @@ export default function App() {
 
       setDebugText(`Почуто: "${spokenText}"`);
 
+      // Базовые фонетические замены для более точного распознавания детской речи
       const speechFallbacks: Record<string, string[]> = {
         bread: ['red', 'brad', 'dread', 'brend', 'breathe', 'breath', 'braid', 'brand', 'pret', 'bed', 'bad', 'ed', 'bray', 'break', 'head', 'said', 'bred', 'bret'],
         butter: ['better', 'button', 'water', 'matter', 'batur', 'butler', 'bat', 'bater', 'barter', 'bata', 'baba', 'pater', 'data', 'beta', 'buta', 'bato'],
-        eggs: ['ex', 'x', 'ax', 'acts', 'ext', 'next', 'age', 'egg', 'eg', 'adds', 'ecs', 'ekz', 'eks', 'text', 's', 'ace', 'it', 'hey', 'legs', 'pegs', 'ag', 'egs', 'exs', 'is', 'as', 'ies', 'ek', 'eh', 'eggx', 'eggs']
+        eggs: ['ex', 'x', 'ax', 'acts', 'ext', 'next', 'age', 'egg', 'eg', 'adds', 'ecs', 'ekz', 'eks', 'text', 's', 'ace', 'it', 'hey', 'legs', 'pegs', 'ag', 'egs', 'exs', 'is', 'as', 'ies', 'ek', 'eh', 'eggx', 'eggs'],
+        hug: ['hag', 'huck', 'haag', 'hawk', 'hugged', 'hope', 'hub', 'hot', 'how', 'hack', 'hug', 'heg'],
+        drive: ['dry', 'driver', 'tribe', 'five', 'dive', 'drife', 'try', 'drove', 'trave', 'dryv', 'draiv'],
+        sing: ['thing', 'sin', 'seen', 'send', 'sang', 'song', 'sink', 'think', 'sign', 'seng'],
+        read: ['red', 'rid', 'lead', 'ready', 'reed', 'write', 'rate', 'rich', 'weed', 'read'],
+        drink: ['drank', 'drunk', 'drinked', 'drink-water', 'ring', 'pink', 'drac', 'dring', 'drink'],
+        play: ['clay', 'day', 'pay', 'player', 'plate', 'lay', 'place', 'plei', 'plae']
       };
 
       const fallbacks = speechFallbacks[targetWord] || [];
       const isFallbackMatch = fallbacks.some(f => spokenText === f || spokenText.includes(f));
 
+      // Нечеткое распознавание для морской темы
       let isSeaFuzzyMatch = false;
-      if (targetWord === 'wave') {
-        isSeaFuzzyMatch = spokenText.startsWith('w') || spokenText.startsWith('v') || spokenText.includes('av') || spokenText.includes('ay') || spokenText.includes('ey') || spokenText.includes('way') || spokenText.includes('why') || spokenText.includes('one') || spokenText.includes('with') || spokenText.includes('we') || spokenText === 'v' || spokenText === 'w' || spokenText.includes('wa');
-      } else if (targetWord === 'shark') {
-        isSeaFuzzyMatch = spokenText.startsWith('sh') || spokenText.startsWith('ch') || spokenText.includes('ark') || spokenText.includes('art') || spokenText.includes('sharp') || spokenText.includes('shak');
-      } else if (targetWord === 'octopus') {
-        isSeaFuzzyMatch = spokenText.startsWith('oc') || spokenText.startsWith('op') || spokenText.includes('pus') || spokenText.includes('bus') || spokenText.includes('oct');
-      } else if (targetWord === 'island') {
-        isSeaFuzzyMatch = spokenText.startsWith('ai') || spokenText.startsWith('i') || spokenText.includes('land') || spokenText.includes('ilen');
-      } else if (targetWord === 'swim') {
-        isSeaFuzzyMatch = spokenText.startsWith('s') && (spokenText.includes('i') || spokenText.includes('a') || spokenText.includes('m') || spokenText.includes('w'));
-      } else if (targetWord === 'sunbathe') {
-        isSeaFuzzyMatch = spokenText.startsWith('sun') || spokenText.includes('beach') || spokenText.includes('bath') || spokenText.includes('base');
+      if (activeCategory === 'sea') {
+        if (targetWord === 'wave') {
+          isSeaFuzzyMatch = spokenText.startsWith('w') || spokenText.startsWith('v') || spokenText.includes('av') || spokenText.includes('ay') || spokenText.includes('ey') || spokenText.includes('way') || spokenText.includes('why') || spokenText.includes('one') || spokenText.includes('with') || spokenText.includes('we') || spokenText === 'v' || spokenText === 'w' || spokenText.includes('wa');
+        } else if (targetWord === 'shark') {
+          isSeaFuzzyMatch = spokenText.startsWith('sh') || spokenText.startsWith('ch') || spokenText.includes('ark') || spokenText.includes('art') || spokenText.includes('sharp') || spokenText.includes('shak');
+        } else if (targetWord === 'octopus') {
+          isSeaFuzzyMatch = spokenText.startsWith('oc') || spokenText.startsWith('op') || spokenText.includes('pus') || spokenText.includes('bus') || spokenText.includes('oct');
+        } else if (targetWord === 'island') {
+          isSeaFuzzyMatch = spokenText.startsWith('ai') || spokenText.startsWith('i') || spokenText.includes('land') || spokenText.includes('ilen');
+        } else if (targetWord === 'swim') {
+          isSeaFuzzyMatch = spokenText.startsWith('s') && (spokenText.includes('i') || spokenText.includes('a') || spokenText.includes('m') || spokenText.includes('w'));
+        } else if (targetWord === 'sunbathe') {
+          isSeaFuzzyMatch = spokenText.startsWith('sun') || spokenText.includes('beach') || spokenText.includes('bath') || spokenText.includes('base');
+        }
       }
 
-      if (spokenText === targetWord || spokenText.includes(targetWord) || isFallbackMatch || isSeaFuzzyMatch) {
+      // Нечеткое распознавание для раздела Действий
+      let isActionsFuzzyMatch = false;
+      if (activeCategory === 'actions') {
+        if (targetWord === 'hug') {
+          isActionsFuzzyMatch = spokenText.startsWith('h') && (spokenText.includes('u') || spokenText.includes('g') || spokenText.includes('a'));
+        } else if (targetWord === 'drive') {
+          isActionsFuzzyMatch = spokenText.startsWith('dr') || spokenText.includes('ry') || spokenText.includes('iv') || spokenText.startsWith('vr');
+        } else if (targetWord === 'sing') {
+          isActionsFuzzyMatch = spokenText.startsWith('s') && (spokenText.includes('i') || spokenText.includes('g') || spokenText.includes('n'));
+        } else if (targetWord === 'read') {
+          isActionsFuzzyMatch = spokenText.startsWith('r') && (spokenText.includes('e') || spokenText.includes('a') || spokenText.includes('d'));
+        } else if (targetWord === 'drink') {
+          isActionsFuzzyMatch = spokenText.startsWith('dr') && (spokenText.includes('i') || spokenText.includes('k') || spokenText.includes('n'));
+        } else if (targetWord === 'play') {
+          isActionsFuzzyMatch = spokenText.startsWith('pl') || (spokenText.startsWith('p') && (spokenText.includes('ay') || spokenText.includes('ey')));
+        }
+      }
+
+      if (spokenText === targetWord || spokenText.includes(targetWord) || isFallbackMatch || isSeaFuzzyMatch || isActionsFuzzyMatch) {
         setSpeakingFeedback('correct');
         playFeedbackSound('correct');
 
@@ -347,7 +375,15 @@ export default function App() {
                 onClick={() => handleCardTap(item)}
                 className="flex flex-col items-center justify-center bg-slate-800/50 border-2 border-slate-700/60 rounded-2xl p-6 cursor-pointer transition-all active:scale-98 shadow-lg aspect-square hover:border-indigo-500/40"
               >
-                <span className="text-6xl mb-3">{item.emoji}</span>
+                {item.image ? (
+                  <img 
+                    src={item.image} 
+                    alt={item.word} 
+                    className="w-20 h-20 object-contain mb-3 select-none pointer-events-none" 
+                  />
+                ) : (
+                  <span className="text-6xl mb-3">{item.emoji}</span>
+                )}
                 <span className="text-lg font-black text-white tracking-wide">{item.word}</span>
                 <span className="text-sm text-slate-400 mt-1 font-medium">{item.translation}</span>
               </div>
@@ -413,7 +449,15 @@ export default function App() {
                     }`} />
 
                     {isMatched && !isCurrentFeedback && (
-                      <span className="text-4xl absolute right-6 animate-scaleIn z-30">{wordItem.emoji}</span>
+                      wordItem.image ? (
+                        <img 
+                          src={wordItem.image} 
+                          alt={wordItem.word} 
+                          className="w-12 h-12 object-contain absolute right-6 animate-scaleIn z-30 select-none pointer-events-none" 
+                        />
+                      ) : (
+                        <span className="text-4xl absolute right-6 animate-scaleIn z-30">{wordItem.emoji}</span>
+                      )
                     )}
                   </div>
                 );
@@ -438,7 +482,15 @@ export default function App() {
                           }`}
                         >
                           <div className="absolute left-[-13px] top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-full bg-[#0f172a] border-r-2 border-transparent z-10" />
-                          <span className="z-20">{item.emoji}</span>
+                          {item.image ? (
+                            <img 
+                              src={item.image} 
+                              alt={item.word} 
+                              className="w-12 h-12 object-contain z-20 select-none pointer-events-none" 
+                            />
+                          ) : (
+                            <span className="z-20">{item.emoji}</span>
+                          )}
                         </button>
                       ) : (
                         <div className="w-full h-full opacity-0" />
@@ -526,7 +578,15 @@ export default function App() {
               speakingFeedback === 'wrong' ? 'border-red-500 bg-red-500/5 animate-shake' : 'border-slate-700'
             }`}>
               
-              <span className="text-9xl mb-4 filter drop-shadow-md select-none animate-fadeIn">{currentItem.emoji}</span>
+              {currentItem.image ? (
+                <img 
+                  src={currentItem.image} 
+                  alt={currentItem.word} 
+                  className="w-40 h-40 object-contain mb-4 filter drop-shadow-md select-none pointer-events-none animate-fadeIn" 
+                />
+              ) : (
+                <span className="text-9xl mb-4 filter drop-shadow-md select-none animate-fadeIn">{currentItem.emoji}</span>
+              )}
               
               <h3 className="text-4xl font-black tracking-wide text-white mb-2 uppercase">{currentItem.word}</h3>
               <p className="text-base text-slate-400 font-medium tracking-wide mb-4">{currentItem.translation}</p>
